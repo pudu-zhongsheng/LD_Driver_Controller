@@ -1,0 +1,150 @@
+/* 驱动基本信息样式 */
+DriverInfoWidget {
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 10px;
+}
+
+DriverInfoWidget QLineEdit {
+    padding: 5px;
+    border: 1px solid #d0d0d0;
+    border-radius: 3px;
+}
+
+/* 调控区域样式 */
+ControlWidget {
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 10px;
+}
+
+ControlWidget QGroupBox {
+    font-weight: bold;
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    margin-top: 1em;
+    padding-top: 10px;
+}
+
+ControlWidget QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 3px;
+}
+
+ControlWidget QRadioButton {
+    padding: 5px;
+}
+
+ControlWidget QSpinBox {
+    padding: 5px;
+    border: 1px solid #d0d0d0;
+    border-radius: 3px;
+    min-width: 80px;
+}
+
+/* 扫描测试区域样式 */
+ScanWidget {
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 10px;
+}
+
+ScanWidget QPushButton {
+    padding: 5px 15px;
+    border: none;
+    border-radius: 3px;
+    background-color: #1890ff;
+    color: white;
+    min-width: 80px;
+}
+
+ScanWidget QPushButton:hover {
+    background-color: #40a9ff;
+}
+
+ScanWidget QPushButton:disabled {
+    background-color: #d9d9d9;
+}
+
+/* 滑条区域样式 */
+SliderWidget {
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 10px;
+}
+
+SliderWidget QSlider::groove:horizontal {
+    border: 1px solid #d0d0d0;
+    height: 6px;
+    background: #f5f5f5;
+    border-radius: 3px;
+}
+
+SliderWidget QSlider::handle:horizontal {
+    background: #1890ff;
+    border: none;
+    width: 16px;
+    margin: -5px 0;
+    border-radius: 8px;
+}
+
+SliderWidget QSlider::handle:horizontal:hover {
+    background: #40a9ff;
+}
+
+/* 参数表样式 */
+ParamTableWidget {
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 10px;
+}
+
+ParamTableWidget QTableWidget {
+    border: 1px solid #e0e0e0;
+    background-color: #ffffff;
+    gridline-color: #f0f0f0;
+}
+
+ParamTableWidget QTableWidget::item {
+    padding: 5px;
+}
+
+ParamTableWidget QHeaderView::section {
+    background-color: #fafafa;
+    padding: 5px;
+    border: none;
+    border-right: 1px solid #e0e0e0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+ParamTableWidget QTableWidget::item:selected {
+    background-color: #e6f7ff;
+    color: #000000;
+}
+
+/* 翻页按钮样式 */
+QPushButton.page-button {
+    padding: 5px 15px;
+    border: 1px solid #d0d0d0;
+    border-radius: 3px;
+    background-color: #ffffff;
+    min-width: 80px;
+}
+
+QPushButton.page-button:hover {
+    background-color: #f5f5f5;
+    border-color: #40a9ff;
+    color: #40a9ff;
+}
+
+QPushButton.page-button:disabled {
+    background-color: #f5f5f5;
+    border-color: #d9d9d9;
+    color: #d9d9d9;
+} 
