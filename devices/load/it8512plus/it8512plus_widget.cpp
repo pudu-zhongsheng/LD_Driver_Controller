@@ -604,8 +604,6 @@ bool IT8512Plus_Widget::isConnected() const
 
 void IT8512Plus_Widget::handleSerialError(const QString &error)
 {
-    emit this->error(error);
-    
     // 如果是断开连接错误，发送断开连接信号
     if (error.contains("disconnected", Qt::CaseInsensitive)) {
         emit serialDisconnected();

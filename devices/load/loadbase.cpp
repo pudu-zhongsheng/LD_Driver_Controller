@@ -6,13 +6,22 @@ LoadBase::LoadBase(QWidget *parent) : QWidget(parent)
 
 LoadBase::~LoadBase()
 {
+    if (m_serial) {
+        if (m_serial->isConnected()) {
+            m_serial->disconnectPort();
+        }
+        delete m_serial;
+        m_serial = nullptr;
+    }
 }
 
-void LoadBase::connectToPort(const QString &portName)
+bool LoadBase::connectToPort(const QString &portName)
 {
     if (m_serial && m_serial->connectToPort(portName)) {
         emit serialConnected(portName);
+        return true;
     }
+    return false;
 }
 
 void LoadBase::disconnectPort()
@@ -26,9 +35,4 @@ void LoadBase::disconnectPort()
 bool LoadBase::isConnected() const
 {
     return m_serial && m_serial->isConnected();
-}
-
-void LoadBase::error(const QString &msg)
-{
-    emit serialError(msg);
 }

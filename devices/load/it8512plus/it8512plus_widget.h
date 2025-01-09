@@ -22,7 +22,7 @@ public:
     explicit IT8512Plus_Widget(EleLoad_ITPlus *protocol, QWidget *parent = nullptr);
     ~IT8512Plus_Widget();
 
-    void connectToPort(const QString &portName) override;
+    bool connectToPort(const QString &portName) override;
     void disconnectPort() override;
     bool isConnected() const override;
 

@@ -8,17 +8,17 @@ class LoadBase : public QWidget
 {
     Q_OBJECT
 public:
-    explicit LoadBase(QWidget *parent = nullptr) : QWidget(parent) {}
-    virtual ~LoadBase() {}
+    explicit LoadBase(QWidget *parent = nullptr);
+    virtual ~LoadBase();
 
-    virtual void connectToPort(const QString &portName) = 0;
+    virtual bool connectToPort(const QString &portName) = 0;
     virtual void disconnectPort() = 0;
     virtual bool isConnected() const = 0;
 
 signals:
     void serialConnected(const QString &portName);
     void serialDisconnected();
-    void serialError(const QString &msg);
+    void error(const QString &msg);
     void statusUpdated();
 
 protected:

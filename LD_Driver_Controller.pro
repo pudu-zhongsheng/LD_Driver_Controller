@@ -4,6 +4,8 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
 
+RC_ICONS=logo/LD_Control.ico
+
 SOURCES += \
     main.cpp \
     mainwindow.cpp \
@@ -28,8 +30,7 @@ SOURCES += \
     util/config.cpp \
     util/datamanager.cpp \
     util/errorhandler.cpp \
-    util/logger.cpp \
-    devices/load/it8512plus/it8512plus_widget.cpp
+    util/logger.cpp
 
 
 HEADERS += \
@@ -63,6 +64,7 @@ FORMS += \
     mainwindow.ui
 
 RESOURCES += \
+    logo.qrc \
     resources.qrc
 
 # Default rules for deployment.

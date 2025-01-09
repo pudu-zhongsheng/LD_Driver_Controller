@@ -68,4 +68,122 @@ void CL200AWidget::connectToPort(const QString &portName)
     }
 }
 
+CL200AWidget::~CL200AWidget()
+{
+    if (m_protocol) {
+        delete m_protocol;
+        m_protocol = nullptr;
+    }
+    
+    if (m_statusTimer) {
+        m_statusTimer->stop();
+        delete m_statusTimer;
+        m_statusTimer = nullptr;
+    }
+}
+
+void CL200AWidget::disconnectPort()
+{
+    if (m_serial) {
+        stopMeasurement();
+        m_serial->disconnectPort();
+        emit serialDisconnected();
+    }
+}
+
+void CL200AWidget::setHold(bool hold)
+{
+    if (m_serial && m_serial->isConnected()) {
+        QByteArray cmd = m_protocol->makeHoldCommand(hold);
+        m_serial->sendData(cmd);
+    }
+}
+
+void CL200AWidget::setBacklight(bool on)
+{
+    if (m_serial && m_serial->isConnected()) {
+        QByteArray cmd = m_protocol->makeBacklightCommand(on);
+        m_serial->sendData(cmd);
+    }
+}
+
+void CL200AWidget::setRange(int range)
+{
+    if (m_serial && m_serial->isConnected()) {
+        QByteArray cmd = m_protocol->makeRangeCommand(range);
+        m_serial->sendData(cmd);
+    }
+}
+
+void CL200AWidget::setPCMode()
+{
+    if (m_serial && m_serial->isConnected()) {
+        QByteArray cmd = m_protocol->makePCConnectCommand();
+        m_serial->sendData(cmd);
+    }
+}
+
+void CL200AWidget::setEXTMode(bool on)
+{
+    if (m_serial && m_serial->isConnected()) {
+        QByteArray cmd = m_protocol->makeEXTCommand(on);
+        m_serial->sendData(cmd);
+    }
+}
+
+void CL200AWidget::startMeasurement()
+{
+    m_statusTimer->start();
+}
+
+void CL200AWidget::stopMeasurement()
+{
+    m_statusTimer->stop();
+}
+
+void CL200AWidget::handleSerialError(QSerialPort::SerialPortError error)
+{
+    QString errorMsg;
+    switch (error) {
+        case QSerialPort::DeviceNotFoundError:
+            errorMsg = "设备未找到";
+            break;
+        case QSerialPort::PermissionError:
+            errorMsg = "无权限访问设备";
+            break;
+        case QSerialPort::OpenError:
+            errorMsg = "无法打开设备";
+            break;
+        case QSerialPort::NotOpenError:
+            errorMsg = "设备未打开";
+            break;
+        case QSerialPort::WriteError:
+            errorMsg = "写入错误";
+            break;
+        case QSerialPort::ReadError:
+            errorMsg = "读取错误";
+            break;
+        case QSerialPort::ResourceError:
+            errorMsg = "设备已断开";
+            break;
+        default:
+            errorMsg = "未知错误";
+            break;
+    }
+    emit serialError(errorMsg);
+}
+
+bool CL200AWidget::isConnected() const
+{
+    return m_serial && m_serial->isConnected();
+}
+
+void CL200AWidget::initUI()
+{
+    // 创建主布局
+    auto *mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
+    setLayout(mainLayout);
+}
+
 // ... 其他方法实现 

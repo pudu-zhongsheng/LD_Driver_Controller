@@ -22,7 +22,6 @@ debug/config.o
 debug/datamanager.o
 debug/errorhandler.o
 debug/logger.o
-debug/it8512plus_widget.o
 debug/qrc_resources.o
 debug/moc_mainwindow.o
 debug/moc_driverprotocol.o

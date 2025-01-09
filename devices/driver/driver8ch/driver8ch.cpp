@@ -19,15 +19,20 @@ Driver8CH::Driver8CH(QWidget *parent) : DriverBase(parent)
 
 void Driver8CH::initUI()
 {
-    auto *mainLayout = new QVBoxLayout(this);
-    mainLayout->setSpacing(20);
-
+    auto *mainHLayout = new QHBoxLayout(this);
+    mainHLayout->setSpacing(20);
+    auto *mainLayout1 = new QVBoxLayout();
+    mainLayout1->setSpacing(20);
+    auto *mainLayout2 = new QVBoxLayout();
+    mainLayout2->setSpacing(20);
+    auto *mainLayout3 = new QVBoxLayout();
+    mainLayout3->setSpacing(20);
     // 1. 基本信息区域
     auto *infoGroup = new QGroupBox("基本信息", this);
     auto *infoLayout = new QVBoxLayout(infoGroup);
     m_infoWidget = new DriverInfoWidget(this);
     infoLayout->addWidget(m_infoWidget);
-    mainLayout->addWidget(infoGroup);
+    mainLayout1->addWidget(infoGroup);
 
     // 2. 调控区域
     auto *controlGroup = new QGroupBox("调控区域", this);
@@ -35,28 +40,32 @@ void Driver8CH::initUI()
     m_controlWidget = new ControlWidget(this);
     m_controlWidget->setRegisterRange(8);  // 8通道
     controlLayout->addWidget(m_controlWidget);
-    mainLayout->addWidget(controlGroup);
+    mainLayout1->addWidget(controlGroup);
 
     // 3. 扫描测试区域
     auto *scanGroup = new QGroupBox("扫描测试", this);
     auto *scanLayout = new QVBoxLayout(scanGroup);
     m_scanWidget = new ScanWidget(this);
     scanLayout->addWidget(m_scanWidget);
-    mainLayout->addWidget(scanGroup);
+    mainLayout2->addWidget(scanGroup);
 
     // 4. 滑条控制区域
     auto *sliderGroup = new QGroupBox("滑条控制", this);
     auto *sliderLayout = new QVBoxLayout(sliderGroup);
     m_sliderWidget = new SliderWidget(8, this);  // 8通道
     sliderLayout->addWidget(m_sliderWidget);
-    mainLayout->addWidget(sliderGroup);
+    mainLayout3->addWidget(sliderGroup);
 
     // 5. 参数表区域
     auto *paramGroup = new QGroupBox("参数表", this);
     auto *paramLayout = new QVBoxLayout(paramGroup);
     m_paramTable = new ParamTableWidget(8, this);  // 8通道
     paramLayout->addWidget(m_paramTable);
-    mainLayout->addWidget(paramGroup);
+    mainLayout2->addWidget(paramGroup);
+
+    mainHLayout->addLayout(mainLayout1);
+    mainHLayout->addLayout(mainLayout2);
+    mainHLayout->addLayout(mainLayout3);
 
     // 加载样式表
     QFile file(":/styles/driver.qss");
@@ -273,6 +282,47 @@ void Driver8CH::updateParamTable()
         // TODO: 从协议或缓存中获取实际值
         m_paramTable->updateChannelValue(i, value1, value2, value3);
     }
+}
+
+Driver8CH::~Driver8CH()
+{
+    if (m_protocol) {
+        delete m_protocol;
+        m_protocol = nullptr;
+    }
+}
+
+void Driver8CH::handleSerialError(QSerialPort::SerialPortError error)
+{
+    QString errorMsg;
+    switch (error) {
+        case QSerialPort::DeviceNotFoundError:
+            errorMsg = "设备未找到";
+            break;
+        case QSerialPort::PermissionError:
+            errorMsg = "无权限访问设备";
+            break;
+        case QSerialPort::OpenError:
+            errorMsg = "无法打开设备";
+            break;
+        case QSerialPort::NotOpenError:
+            errorMsg = "设备未打开";
+            break;
+        case QSerialPort::WriteError:
+            errorMsg = "写入错误";
+            break;
+        case QSerialPort::ReadError:
+            errorMsg = "读取错误";
+            break;
+        case QSerialPort::ResourceError:
+            errorMsg = "设备已断开";
+            emit serialDisconnected();
+            break;
+        default:
+            errorMsg = "未知错误";
+            break;
+    }
+    emit serialError(errorMsg);
 }
 
 // ... 其他方法实现保持不变 

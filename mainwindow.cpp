@@ -16,6 +16,7 @@ MainWindow::MainWindow(const QString &driver, const QString &load, const QString
     , m_driverType(driver)
     , m_loadType(load)
     , m_meterType(meter)
+    , m_dataTimer(new QTimer(this))
 {
     ui->setupUi(this);
     setWindowTitle("LD Driver Controller");
@@ -94,14 +95,12 @@ void MainWindow::initUI()
     
     // 组装布局
     topLayout->addWidget(m_driverArea, 3);
-    auto *rightTopLayout = new QVBoxLayout();
-    rightTopLayout->addWidget(m_loadStatusGroup);
-    rightTopLayout->addWidget(m_schemeGroup);
-    topLayout->addLayout(rightTopLayout, 1);
     topLayout->addWidget(m_chartWidget, 2);
     
     bottomLayout->addWidget(m_connectionGroup, 3);
-    bottomLayout->addStretch(3);
+    bottomLayout->addWidget(m_loadStatusGroup, 1);
+    bottomLayout->addWidget(m_schemeGroup, 1);
+    bottomLayout->addStretch(5);
     
     // 返回按钮
     m_backButton = new QPushButton("返回", this);
@@ -336,10 +335,10 @@ void MainWindow::createLoadStatusArea()
             layout->addWidget(loadWidget);
             
             // 错误处理
-            connect(loadWidget, &LoadBase::error, this, [=](const QString &msg) {
-                ToastMessage *toast = new ToastMessage(msg, this);
-                toast->showToast(1000);
-            });
+//            connect(loadWidget, &LoadBase::serialError, this, [=](const QString &msg) {
+//                ToastMessage *toast = new ToastMessage(msg, this);
+//                toast->showToast(1000);
+//            });
             
             // 显示为非模态对话框
             dialog->setAttribute(Qt::WA_DeleteOnClose);

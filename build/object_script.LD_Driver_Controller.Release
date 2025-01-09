@@ -22,7 +22,6 @@ release/config.o
 release/datamanager.o
 release/errorhandler.o
 release/logger.o
-release/it8512plus_widget.o
 release/qrc_resources.o
 release/moc_mainwindow.o
 release/moc_driverprotocol.o

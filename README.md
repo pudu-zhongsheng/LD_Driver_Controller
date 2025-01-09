@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-# LD_Driver_Controller
-LED驱动及电子负载、照度计控制测试系统
-=======
 # LD Driver Controller
 
 ## 项目概述
@@ -70,4 +66,3 @@ project/
 - **v1.0**: 初始版本，包含基本界面和串口通信管理功能。
 
 请在完成关键节点后及时更新此文档。
->>>>>>> 530e40f (first commit)
