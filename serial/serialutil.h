@@ -5,6 +5,7 @@
 #include <QSerialPort>
 #include <QSerialPortInfo>
 #include <QDebug>
+#include <QDateTime>
 
 class SerialUtil : public QWidget
 {
@@ -29,6 +30,7 @@ public:
     bool write(const QByteArray &data);
     QByteArray readAll();
     bool waitForResponse(int msecs);
+    QString portName() const { return m_serial->portName(); }
 
 public slots:
     void readData();    // 读取数据
@@ -39,7 +41,7 @@ signals:
     void portDisconnected(const QString &portName); // 串口断开信号
 
 private:
-    QSerialPort *serialPort;
+    QSerialPort *m_serial;
 };
 
 #endif // ELECTRONICLOADSERIAL_H

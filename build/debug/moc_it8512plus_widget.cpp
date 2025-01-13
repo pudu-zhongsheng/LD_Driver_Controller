@@ -22,8 +22,8 @@ QT_BEGIN_MOC_NAMESPACE
 QT_WARNING_PUSH
 QT_WARNING_DISABLE_DEPRECATED
 struct qt_meta_stringdata_IT8512Plus_Widget_t {
-    QByteArrayData data[20];
-    char stringdata0[295];
+    QByteArrayData data[22];
+    char stringdata0[325];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -51,7 +51,9 @@ QT_MOC_LITERAL(15, 211, 23), // "onDynamicSettingChanged"
 QT_MOC_LITERAL(16, 235, 15), // "onTriggerSignal"
 QT_MOC_LITERAL(17, 251, 17), // "checkTargetValues"
 QT_MOC_LITERAL(18, 269, 19), // "onMaxVoltageChanged"
-QT_MOC_LITERAL(19, 289, 5) // "value"
+QT_MOC_LITERAL(19, 289, 5), // "value"
+QT_MOC_LITERAL(20, 295, 23), // "onWorkModeSelectChanged"
+QT_MOC_LITERAL(21, 319, 5) // "index"
 
     },
     "IT8512Plus_Widget\0serialConnected\0\0"
@@ -61,7 +63,8 @@ QT_MOC_LITERAL(19, 289, 5) // "value"
     "onOutputStateChanged\0onWorkModeChanged\0"
     "onValueSettingChanged\0onDynamicSettingChanged\0"
     "onTriggerSignal\0checkTargetValues\0"
-    "onMaxVoltageChanged\0value"
+    "onMaxVoltageChanged\0value\0"
+    "onWorkModeSelectChanged\0index"
 };
 #undef QT_MOC_LITERAL
 
@@ -71,7 +74,7 @@ static const uint qt_meta_data_IT8512Plus_Widget[] = {
        8,       // revision
        0,       // classname
        0,    0, // classinfo
-      13,   14, // methods
+      14,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -79,21 +82,22 @@ static const uint qt_meta_data_IT8512Plus_Widget[] = {
        3,       // signalCount
 
  // signals: name, argc, parameters, tag, flags
-       1,    1,   79,    2, 0x06 /* Public */,
-       4,    0,   82,    2, 0x06 /* Public */,
-       5,    3,   83,    2, 0x06 /* Public */,
+       1,    1,   84,    2, 0x06 /* Public */,
+       4,    0,   87,    2, 0x06 /* Public */,
+       5,    3,   88,    2, 0x06 /* Public */,
 
  // slots: name, argc, parameters, tag, flags
-       9,    0,   90,    2, 0x08 /* Private */,
-      10,    0,   91,    2, 0x08 /* Private */,
-      11,    0,   92,    2, 0x08 /* Private */,
-      12,    0,   93,    2, 0x08 /* Private */,
-      13,    0,   94,    2, 0x08 /* Private */,
-      14,    0,   95,    2, 0x08 /* Private */,
-      15,    0,   96,    2, 0x08 /* Private */,
-      16,    0,   97,    2, 0x08 /* Private */,
-      17,    0,   98,    2, 0x08 /* Private */,
-      18,    1,   99,    2, 0x08 /* Private */,
+       9,    0,   95,    2, 0x08 /* Private */,
+      10,    0,   96,    2, 0x08 /* Private */,
+      11,    0,   97,    2, 0x08 /* Private */,
+      12,    0,   98,    2, 0x08 /* Private */,
+      13,    0,   99,    2, 0x08 /* Private */,
+      14,    0,  100,    2, 0x08 /* Private */,
+      15,    0,  101,    2, 0x08 /* Private */,
+      16,    0,  102,    2, 0x08 /* Private */,
+      17,    0,  103,    2, 0x08 /* Private */,
+      18,    1,  104,    2, 0x08 /* Private */,
+      20,    1,  107,    2, 0x08 /* Private */,
 
  // signals: parameters
     QMetaType::Void, QMetaType::QString,    3,
@@ -111,6 +115,7 @@ static const uint qt_meta_data_IT8512Plus_Widget[] = {
     QMetaType::Void,
     QMetaType::Void,
     QMetaType::Void, QMetaType::Double,   19,
+    QMetaType::Void, QMetaType::Int,   21,
 
        0        // eod
 };
@@ -134,6 +139,7 @@ void IT8512Plus_Widget::qt_static_metacall(QObject *_o, QMetaObject::Call _c, in
         case 10: _t->onTriggerSignal(); break;
         case 11: _t->checkTargetValues(); break;
         case 12: _t->onMaxVoltageChanged((*reinterpret_cast< double(*)>(_a[1]))); break;
+        case 13: _t->onWorkModeSelectChanged((*reinterpret_cast< int(*)>(_a[1]))); break;
         default: ;
         }
     } else if (_c == QMetaObject::IndexOfMethod) {
@@ -191,13 +197,13 @@ int IT8512Plus_Widget::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 13)
+        if (_id < 14)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 13;
+        _id -= 14;
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 13)
+        if (_id < 14)
             *reinterpret_cast<int*>(_a[0]) = -1;
-        _id -= 13;
+        _id -= 14;
     }
     return _id;
 }

@@ -23,6 +23,7 @@
 #include <QTableWidget>
 #include "util/datamanager.h"
 #include "devices/load/it8512plus/it8512plus_widget.h"
+#include "devices/load/load_base.h"
 #include "devices/meter/meterbase.h"
 #include "devices/meter/cl200a/cl200awidget.h"
 #include "devices/driver/driverbase.h"
@@ -107,7 +108,7 @@ private:
     QLineSeries *m_bSeries;
     
     // 设备对象
-    IT8512Plus_Widget *m_loadWidget = nullptr;    // 电子负载对象
+    LoadBase *m_loadWidget = nullptr;    // 电子负载对象
     MeterBase *m_meterWidget = nullptr; // 照度计对象
     DriverBase *m_driverWidget = nullptr;         // 驱动对象
     

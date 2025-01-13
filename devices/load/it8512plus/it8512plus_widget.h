@@ -4,6 +4,7 @@
 #include "../load_base.h"
 #include "communication/eleload_itplus.h"
 #include "../../../serial/serialutil.h"
+#include "../../../util/Toastmessage.h"
 #include <QTimer>
 #include <QSound>
 #include <QLabel>
@@ -45,15 +46,18 @@ private slots:
     void onTriggerSignal();         // 发送触发信号
     void checkTargetValues();       // 检查目标值
     void onMaxVoltageChanged(double value);
+    void onWorkModeSelectChanged(int index);  // 工作模式选择改变
 
 private:
     void setupUi();                 // 设置UI
     void initConnections();         // 初始化信号槽
     void updateTargetStatus();      // 更新目标值状态
+    void updateInputLimits();       // 更新输入限制
 
     EleLoad_ITPlus *m_protocol;     // 通信协议
     QTimer *m_statusTimer;          // 状态更新定时器
     QSound *m_alertSound;           // 提示音
+    bool m_isConnecting = false;     // 是否正在连接
 
     // 目标值状态标志
     bool m_voltageTargetReached = false;
@@ -112,10 +116,28 @@ private:
     QDoubleSpinBox *m_minPowerSpinBox;
     QDoubleSpinBox *m_maxPowerSpinBox;
 
-    SerialUtil *m_serial;
+    // 响应处理方法
+    void handleSetCommandResponse(const QByteArray &packet);
+    void handleMaxVoltageResponse(const QByteArray &packet); 
+    void handleMaxCurrentResponse(const QByteArray &packet);
+    void handleMaxPowerResponse(const QByteArray &packet);
+    void handleWorkModeResponse(const QByteArray &packet);
+    void handleStatusResponse(const QByteArray &packet);
+    void handleProductInfoResponse(const QByteArray &packet);
+    void handleConstantValueResponse(const QByteArray &packet);
+    void handleDynamicValueResponse(const QByteArray &packet);
+
+    // 添加成员变量
+    bool m_isRemoteMode = false;    // 远程控制模式标识
+    bool m_isOutput = false;        // 输出状态标识
+    QByteArray m_buffer;            // 数据接收缓存
 
     void handleSerialData(const QByteArray &data);
     void handleSerialError(const QString &error);
+
+    // 添加工作模式选择控件
+    QComboBox *m_workModeSelect;    // 工作模式选择下拉框
+    bool m_isBasicMode = true;      // 当前是否为基础模式
 };
 
 #endif // IT8512PLUS_WIDGET_H 

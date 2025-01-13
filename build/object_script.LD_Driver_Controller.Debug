@@ -22,6 +22,7 @@ debug/config.o
 debug/datamanager.o
 debug/errorhandler.o
 debug/logger.o
+debug/qrc_logo.o
 debug/qrc_resources.o
 debug/moc_mainwindow.o
 debug/moc_driverprotocol.o

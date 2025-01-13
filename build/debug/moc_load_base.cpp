@@ -22,8 +22,8 @@ QT_BEGIN_MOC_NAMESPACE
 QT_WARNING_PUSH
 QT_WARNING_DISABLE_DEPRECATED
 struct qt_meta_stringdata_LoadBase_t {
-    QByteArrayData data[8];
-    char stringdata0[78];
+    QByteArrayData data[11];
+    char stringdata0[108];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -37,13 +37,17 @@ QT_MOC_LITERAL(1, 9, 15), // "serialConnected"
 QT_MOC_LITERAL(2, 25, 0), // ""
 QT_MOC_LITERAL(3, 26, 8), // "portName"
 QT_MOC_LITERAL(4, 35, 18), // "serialDisconnected"
-QT_MOC_LITERAL(5, 54, 5), // "error"
-QT_MOC_LITERAL(6, 60, 3), // "msg"
-QT_MOC_LITERAL(7, 64, 13) // "statusUpdated"
+QT_MOC_LITERAL(5, 54, 11), // "serialError"
+QT_MOC_LITERAL(6, 66, 5), // "error"
+QT_MOC_LITERAL(7, 72, 13), // "statusUpdated"
+QT_MOC_LITERAL(8, 86, 7), // "voltage"
+QT_MOC_LITERAL(9, 94, 7), // "current"
+QT_MOC_LITERAL(10, 102, 5) // "power"
 
     },
     "LoadBase\0serialConnected\0\0portName\0"
-    "serialDisconnected\0error\0msg\0statusUpdated"
+    "serialDisconnected\0serialError\0error\0"
+    "statusUpdated\0voltage\0current\0power"
 };
 #undef QT_MOC_LITERAL
 
@@ -64,13 +68,13 @@ static const uint qt_meta_data_LoadBase[] = {
        1,    1,   34,    2, 0x06 /* Public */,
        4,    0,   37,    2, 0x06 /* Public */,
        5,    1,   38,    2, 0x06 /* Public */,
-       7,    0,   41,    2, 0x06 /* Public */,
+       7,    3,   41,    2, 0x06 /* Public */,
 
  // signals: parameters
     QMetaType::Void, QMetaType::QString,    3,
     QMetaType::Void,
     QMetaType::Void, QMetaType::QString,    6,
-    QMetaType::Void,
+    QMetaType::Void, QMetaType::Float, QMetaType::Float, QMetaType::Float,    8,    9,   10,
 
        0        // eod
 };
@@ -83,8 +87,8 @@ void LoadBase::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, vo
         switch (_id) {
         case 0: _t->serialConnected((*reinterpret_cast< const QString(*)>(_a[1]))); break;
         case 1: _t->serialDisconnected(); break;
-        case 2: _t->error((*reinterpret_cast< const QString(*)>(_a[1]))); break;
-        case 3: _t->statusUpdated(); break;
+        case 2: _t->serialError((*reinterpret_cast< const QString(*)>(_a[1]))); break;
+        case 3: _t->statusUpdated((*reinterpret_cast< float(*)>(_a[1])),(*reinterpret_cast< float(*)>(_a[2])),(*reinterpret_cast< float(*)>(_a[3]))); break;
         default: ;
         }
     } else if (_c == QMetaObject::IndexOfMethod) {
@@ -105,13 +109,13 @@ void LoadBase::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, vo
         }
         {
             using _t = void (LoadBase::*)(const QString & );
-            if (*reinterpret_cast<_t *>(_a[1]) == static_cast<_t>(&LoadBase::error)) {
+            if (*reinterpret_cast<_t *>(_a[1]) == static_cast<_t>(&LoadBase::serialError)) {
                 *result = 2;
                 return;
             }
         }
         {
-            using _t = void (LoadBase::*)();
+            using _t = void (LoadBase::*)(float , float , float );
             if (*reinterpret_cast<_t *>(_a[1]) == static_cast<_t>(&LoadBase::statusUpdated)) {
                 *result = 3;
                 return;
@@ -174,16 +178,17 @@ void LoadBase::serialDisconnected()
 }
 
 // SIGNAL 2
-void LoadBase::error(const QString & _t1)
+void LoadBase::serialError(const QString & _t1)
 {
     void *_a[] = { nullptr, const_cast<void*>(reinterpret_cast<const void*>(std::addressof(_t1))) };
     QMetaObject::activate(this, &staticMetaObject, 2, _a);
 }
 
 // SIGNAL 3
-void LoadBase::statusUpdated()
+void LoadBase::statusUpdated(float _t1, float _t2, float _t3)
 {
-    QMetaObject::activate(this, &staticMetaObject, 3, nullptr);
+    void *_a[] = { nullptr, const_cast<void*>(reinterpret_cast<const void*>(std::addressof(_t1))), const_cast<void*>(reinterpret_cast<const void*>(std::addressof(_t2))), const_cast<void*>(reinterpret_cast<const void*>(std::addressof(_t3))) };
+    QMetaObject::activate(this, &staticMetaObject, 3, _a);
 }
 QT_WARNING_POP
 QT_END_MOC_NAMESPACE

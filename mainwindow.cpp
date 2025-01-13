@@ -29,12 +29,14 @@ MainWindow::MainWindow(const QString &driver, const QString &load, const QString
         auto *protocol = new EleLoad_ITPlus(0x00, this);
         m_loadWidget = new IT8512Plus_Widget(protocol, this);
         
-        // 连接信号槽
-        connect(m_loadWidget, &IT8512Plus_Widget::serialConnected,
+        // 连接所有信号
+        connect(m_loadWidget, &LoadBase::serialConnected,
                 this, &MainWindow::onLoadSerialConnected);
-        connect(m_loadWidget, &IT8512Plus_Widget::serialDisconnected,
+        connect(m_loadWidget, &LoadBase::serialDisconnected,
                 this, &MainWindow::onLoadSerialDisconnected);
-        connect(m_loadWidget, &IT8512Plus_Widget::statusUpdated,
+        connect(m_loadWidget, &LoadBase::serialError,
+                this, &MainWindow::onLoadSerialError);
+        connect(m_loadWidget, &LoadBase::statusUpdated,
                 this, &MainWindow::updateLoadStatus);
     }
     
@@ -98,7 +100,7 @@ void MainWindow::initUI()
     topLayout->addWidget(m_chartWidget, 2);
     
     bottomLayout->addWidget(m_connectionGroup, 3);
-    bottomLayout->addWidget(m_loadStatusGroup, 1);
+    bottomLayout->addWidget(m_loadStatusGroup, 2);
     bottomLayout->addWidget(m_schemeGroup, 1);
     bottomLayout->addStretch(5);
     
@@ -131,6 +133,7 @@ void MainWindow::createConnectionArea()
     auto *driverLayout = new QVBoxLayout(driverConnBox);
     auto *driverPortCombo = new QComboBox(this);
     auto *driverConnBtn = new QPushButton("连接", this);
+    driverConnBtn->setObjectName("driverConnBtn");
     driverConnBtn->setCheckable(true);
     driverLayout->addWidget(driverPortCombo);
     driverLayout->addWidget(driverConnBtn);
@@ -140,6 +143,7 @@ void MainWindow::createConnectionArea()
     auto *loadLayout = new QVBoxLayout(loadConnBox);
     auto *loadPortCombo = new QComboBox(this);
     auto *loadConnBtn = new QPushButton("连接", this);
+    loadConnBtn->setObjectName("loadConnBtn");
     loadConnBtn->setCheckable(true);
     loadLayout->addWidget(loadPortCombo);
     loadLayout->addWidget(loadConnBtn);
@@ -149,6 +153,7 @@ void MainWindow::createConnectionArea()
     auto *meterLayout = new QVBoxLayout(meterConnBox);
     auto *meterPortCombo = new QComboBox(this);
     auto *meterConnBtn = new QPushButton("连接", this);
+    meterConnBtn->setObjectName("meterConnBtn");
     meterConnBtn->setCheckable(true);
     meterLayout->addWidget(meterPortCombo);
     meterLayout->addWidget(meterConnBtn);
@@ -173,20 +178,15 @@ void MainWindow::createConnectionArea()
     // 电子负载连接按钮处理
     connect(loadConnBtn, &QPushButton::clicked, this, [=](bool checked) {
         if (checked) {
-            if (m_loadWidget && m_loadWidget->connectToPort(loadPortCombo->currentText())) {
-                loadConnBtn->setText("断开");
-                ToastMessage *toast = new ToastMessage("电子负载连接成功", this);
-                toast->showToast(1000);
-            } else {
-                loadConnBtn->setChecked(false);
-                ToastMessage *toast = new ToastMessage("电子负载连接失败", this);
-                toast->showToast(1000);
+            // 只发送连接请求
+            if (m_loadWidget) {
+                loadConnBtn->setEnabled(false); // 禁用按钮,等待连接结果
+                m_loadWidget->connectToPort(loadPortCombo->currentText());
             }
         } else {
             if (m_loadWidget) {
                 m_loadWidget->disconnectPort();
             }
-            loadConnBtn->setText("连接");
         }
     });
 
@@ -319,7 +319,6 @@ void MainWindow::createLoadStatusArea()
             return;
         }
 
-        // 创建电子负载设置窗口
         if (m_loadType == "IT8512+") {
             // 创建新窗口
             QDialog *dialog = new QDialog(this);
@@ -329,19 +328,29 @@ void MainWindow::createLoadStatusArea()
             // 创建布局
             auto *layout = new QVBoxLayout(dialog);
             
-            // 创建电子负载控件
-            auto *protocol = new EleLoad_ITPlus(0x00, this);
-            auto *loadWidget = new IT8512Plus_Widget(protocol, dialog);
-            layout->addWidget(loadWidget);
+            // 将电子负载控件从当前父对象移除并添加到对话框
+            if (m_loadWidget) {
+                m_loadWidget->setParent(nullptr);  // 先断开原有的父子关系
+                layout->addWidget(m_loadWidget);
+                m_loadWidget->show();  // 确保控件可见
+            }
+            
+            // 处理对话框关闭事件
+            connect(dialog, &QDialog::finished, this, [this, dialog, layout]() {
+                if (m_loadWidget) {
+                    layout->removeWidget(m_loadWidget);  // 使用局部 layout 而不是 layout()
+                    m_loadWidget->setParent(this);
+                    m_loadWidget->hide();
+                }
+                dialog->deleteLater();
+            });
             
             // 错误处理
-//            connect(loadWidget, &LoadBase::serialError, this, [=](const QString &msg) {
-//                ToastMessage *toast = new ToastMessage(msg, this);
-//                toast->showToast(1000);
-//            });
+            connect(m_loadWidget, &LoadBase::serialError, this, [=](const QString &msg) {
+                ToastMessage *toast = new ToastMessage(msg, this);
+                toast->showToast(1000);
+            });
             
-            // 显示为非模态对话框
-            dialog->setAttribute(Qt::WA_DeleteOnClose);
             dialog->show();
         } else {
             ToastMessage *toast = new ToastMessage("不支持的电子负载型号", this);
@@ -464,7 +473,7 @@ void MainWindow::saveScheme(const QString &name)
     
     // 保存电子负载设置
     if (m_loadWidget) {
-        schemeData["load"] = m_loadWidget->saveSettings();
+        schemeData["load_settings"] = m_loadWidget->saveSettings();
     }
     
     // 保存图表设置
@@ -505,8 +514,8 @@ void MainWindow::loadScheme(const QString &name)
     QJsonObject schemeData = doc.object();
     
     // 加载电子负载设置
-    if (m_loadWidget && schemeData.contains("load")) {
-        m_loadWidget->loadSettings(schemeData["load"].toObject());
+    if (m_loadWidget && schemeData.contains("load_settings")) {
+        m_loadWidget->loadSettings(schemeData["load_settings"].toObject());
     }
     
     // 加载图表设置
@@ -1092,20 +1101,22 @@ void MainWindow::createDriverArea()
 
 void MainWindow::updateLoadStatus(float voltage, float current, float power)
 {
-    // 保存最新数据
+    // 保存最新的测量值
     m_lastVoltage = voltage;
     m_lastCurrent = current;
     m_lastPower = power;
     
-    // 更新电子负载状态显示
-    if (auto *voltageValue = findChild<QLabel*>("voltageValue")) {
-        voltageValue->setText(QString::number(voltage, 'f', 3) + " V");
-    }
-    if (auto *currentValue = findChild<QLabel*>("currentValue")) {
-        currentValue->setText(QString::number(current, 'f', 3) + " A");
-    }
-    if (auto *powerValue = findChild<QLabel*>("powerValue")) {
-        powerValue->setText(QString::number(power, 'f', 3) + " W");
+    // 更新状态显示
+    if (m_loadStatusGroup) {
+        if (auto *voltageLabel = m_loadStatusGroup->findChild<QLabel*>("voltageLabel")) {
+            voltageLabel->setText(QString::number(voltage, 'f', 3) + " V");
+        }
+        if (auto *currentLabel = m_loadStatusGroup->findChild<QLabel*>("currentLabel")) {
+            currentLabel->setText(QString::number(current, 'f', 3) + " A");
+        }
+        if (auto *powerLabel = m_loadStatusGroup->findChild<QLabel*>("powerLabel")) {
+            powerLabel->setText(QString::number(power, 'f', 3) + " W");
+        }
     }
 }
 
@@ -1158,18 +1169,24 @@ void MainWindow::updateConnectionStatus()
 
 void MainWindow::onLoadSerialConnected(const QString &portName)
 {
-    // 更新UI状态
     updateConnectionStatus();
-    // ... 其他处理 ...
+    
+    if (auto *loadConnBtn = m_connectionGroup->findChild<QPushButton*>("loadConnBtn")) {
+        loadConnBtn->setEnabled(true);
+        loadConnBtn->setChecked(true);
+        loadConnBtn->setText("断开");
+    }
+    
+    ToastMessage *toast = new ToastMessage("电子负载已连接到 " + portName, this);
+    toast->showToast(1000);
 }
 
 void MainWindow::onLoadSerialDisconnected()
 {
-    // 更新UI状态
     updateConnectionStatus();
     
-    // 更新连接按钮状态
     if (auto *loadConnBtn = m_connectionGroup->findChild<QPushButton*>("loadConnBtn")) {
+        loadConnBtn->setEnabled(true);
         loadConnBtn->setChecked(false);
         loadConnBtn->setText("连接");
     }
@@ -1180,12 +1197,17 @@ void MainWindow::onLoadSerialDisconnected()
 
 void MainWindow::onLoadSerialError(const QString &error)
 {
-    LOG_ERROR("电子负载串口错误: " + error);
+    updateConnectionStatus();
+    
+    if (auto *loadConnBtn = m_connectionGroup->findChild<QPushButton*>("loadConnBtn")) {
+        loadConnBtn->setEnabled(true);
+        loadConnBtn->setChecked(false);
+        loadConnBtn->setText("连接");
+    }
+    
+    LOG_ERROR("电子负载错误: " + error);
     ToastMessage *toast = new ToastMessage("电子负载错误: " + error, this);
     toast->showToast(1000);
-    
-    // 更新连接状态
-    updateConnectionStatus();
 }
 
 void MainWindow::onMeterSerialConnected(const QString &portName)

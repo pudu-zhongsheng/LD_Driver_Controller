@@ -172,6 +172,7 @@ EleLoad_ITPlus::ProductMessage EleLoad_ITPlus::analyseProductMessage(const QByte
     if (!validateResponse(data)) {
         return msg;
     }
+    qDebug() << "analyseProductMessage get data is : " << data.toHex();
 
     // 解析产品型号（5字节ASCII）
     msg.productModel = QString(data.mid(3, 5));
@@ -219,6 +220,17 @@ QByteArray EleLoad_ITPlus::createGetMaxPowerCommand()
 float EleLoad_ITPlus::analyseMaxPower(const QByteArray &data)
 {
     return analyseValue(data, 1000.0f);
+}
+
+// 设置负载模式,mode = 0 为CC, 1 为输出CV, 2 为CW, 3 为CR
+QByteArray EleLoad_ITPlus::createSetLoadModeCommand(uint8_t mode) {
+    QByteArray command(CommandLength, 0x00);
+    command[0] = SyncHeader;
+    command[1] = m_loadAddress;
+    command[2] = 0x28;
+    command[3] = mode;
+    command[CommandLength - 1] = calculateChecksum(command);
+    return command;
 }
 
 // 动态参数命令
@@ -299,6 +311,11 @@ QByteArray EleLoad_ITPlus::createGetProductMessage()
 QByteArray EleLoad_ITPlus::createSetConstantPowerCommand(float power)
 {
     return createSetValueCommand(0x24, power, 1000.0f);
+}
+
+QByteArray EleLoad_ITPlus::createGetConstantPowerCommand()
+{
+    return createGetMessage(0x2F);
 }
 
 // 定值设置命令
@@ -613,6 +630,35 @@ float EleLoad_ITPlus::analyseValue(const QByteArray &data, float scale)
         return -1.0f;
     }
     return rawToValue<float>(data, 3, scale);
+}
+
+// 获取负载FIXED模式
+QByteArray EleLoad_ITPlus::createGetLoadModeCommand()
+{
+    return createGetMessage(0x29);
+}
+
+// 解析负载FIXED模式
+uint8_t EleLoad_ITPlus::analyseLoadMode(const QByteArray &data)
+{
+    if (!validateResponse(data)) {
+        return 0xFF;
+    }
+    return static_cast<uint8_t>(data[3]);
+}
+
+// 解析定功率值
+float EleLoad_ITPlus::analyseConstantPower(const QByteArray &data)
+{
+    if (!validateResponse(data)) {
+        return 0.0f;
+    }
+    
+    uint32_t recvPower = (static_cast<uint8_t>(data[3]) |
+                         static_cast<uint8_t>(data[4]) << 8 |
+                         static_cast<uint8_t>(data[5]) << 16 |
+                         static_cast<uint8_t>(data[6]) << 24);
+    return recvPower / 1000.0f;  // 转换为W
 }
 
 

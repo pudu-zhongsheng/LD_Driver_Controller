@@ -33,7 +33,7 @@ IDC           = idc
 IDL           = midl
 ZIP           = zip -r -9
 DEF_FILE      = 
-RES_FILE      = 
+RES_FILE      = LD_Driver_Controller_resource_res.o
 SED           = $(QMAKE) -install sed
 MOVE          = move
 SUBTARGETS    =  \
@@ -280,6 +280,7 @@ Makefile: ../LD_Driver_Controller.pro D:/Qt/Qt5.14.2/5.14.2/mingw73_64/mkspecs/w
 		D:/Qt/Qt5.14.2/5.14.2/mingw73_64/lib/Qt5Network.prl \
 		D:/Qt/Qt5.14.2/5.14.2/mingw73_64/lib/Qt5Core.prl \
 		D:/Qt/Qt5.14.2/5.14.2/mingw73_64/mkspecs/features/build_pass.prf \
+		../logo.qrc \
 		../resources.qrc
 	$(QMAKE) -o Makefile ..\LD_Driver_Controller.pro -spec win32-g++ "CONFIG+=debug" "CONFIG+=console"
 D:/Qt/Qt5.14.2/5.14.2/mingw73_64/mkspecs/features/spec_pre.prf:
@@ -492,6 +493,7 @@ D:/Qt/Qt5.14.2/5.14.2/mingw73_64/lib/Qt5SerialPort.prl:
 D:/Qt/Qt5.14.2/5.14.2/mingw73_64/lib/Qt5Network.prl:
 D:/Qt/Qt5.14.2/5.14.2/mingw73_64/lib/Qt5Core.prl:
 D:/Qt/Qt5.14.2/5.14.2/mingw73_64/mkspecs/features/build_pass.prf:
+../logo.qrc:
 ../resources.qrc:
 qmake: FORCE
 	@$(QMAKE) -o Makefile ..\LD_Driver_Controller.pro -spec win32-g++ "CONFIG+=debug" "CONFIG+=console"
