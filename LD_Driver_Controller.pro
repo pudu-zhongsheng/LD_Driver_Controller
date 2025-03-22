@@ -7,6 +7,8 @@ CONFIG += c++17
 RC_ICONS=logo/LD_Control.ico
 
 SOURCES += \
+    communication/drivergeneral.cpp \
+    devices/driver/driver1ch/driver1ch.cpp \
     main.cpp \
     mainwindow.cpp \
     communication/driverprotocol.cpp \
@@ -14,6 +16,7 @@ SOURCES += \
     communication/cl_twozerozeroacom.cpp \
     communication/protocol.cpp \
     devices/driver/driverbase.cpp \
+    devices/driver/driverwidget.cpp \
     devices/driver/driver8ch/driver8ch.cpp \
     devices/driver/widgets/controlwidget.cpp \
     devices/driver/widgets/driverinfowidget.cpp \
@@ -34,12 +37,15 @@ SOURCES += \
 
 
 HEADERS += \
+    communication/drivergeneral.h \
+    devices/driver/driver1ch/driver1ch.h \
     mainwindow.h \
     communication/driverprotocol.h \
     communication/eleload_itplus.h \
     communication/cl_twozerozeroacom.h \
     communication/protocol.h \
     devices/driver/driverbase.h \
+    devices/driver/driverwidget.h \
     devices/driver/driver8ch/driver8ch.h \
     devices/driver/widgets/controlwidget.h \
     devices/driver/widgets/driverinfowidget.h \

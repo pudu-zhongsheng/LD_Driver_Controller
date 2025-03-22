@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
     for(int i = 0; i <= 100; i++) {
         splash.setProgress(i);
         a.processEvents();
-        QThread::msleep(30);
+        QThread::msleep(1); // 模拟加载延时
     }
     
     menu->show();

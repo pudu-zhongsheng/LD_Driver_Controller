@@ -52,20 +52,7 @@ MainWindow::MainWindow(const QString &driver, const QString &load, const QString
         connect(m_meterWidget, &MeterBase::measurementUpdated,
                 this, &MainWindow::onMeterDataUpdated);
     }
-    
-    // 根据选择的驱动型号创建对应的对象
-    if (driver == "8CH") {
-        m_driverWidget = new Driver8CH(this);
-        
-        // 连接信号
-        connect(m_driverWidget, &DriverBase::serialConnected,
-                this, &MainWindow::onDriverSerialConnected);
-        connect(m_driverWidget, &DriverBase::serialDisconnected,
-                this, &MainWindow::onDriverSerialDisconnected);
-        connect(m_driverWidget, &DriverBase::serialError,
-                this, &MainWindow::onDriverSerialError);
-    }
-    
+
     initUI();
     initConnections();
     setupStyles();
@@ -1067,6 +1054,50 @@ void MainWindow::createDriverArea()
 
         // 添加到布局
         driverLayout->addWidget(m_driverWidget);
+    } else if (m_driverType == "1CH") {
+        // 如果已经存在驱动对象，先删除
+        if (m_driverGeneralWidget) {
+            m_driverGeneralWidget->deleteLater();
+        }
+        m_driverGeneralWidget = new DriverWidget(1, this);
+        // 添加到布局
+        driverLayout->addWidget(m_driverGeneralWidget);
+        // 可以在这里添加信号连接
+        // TODO: 根据需要添加信号槽连接
+        
+    }  else if (m_driverType == "2CH") {
+        // 如果已经存在驱动对象，先删除
+        if (m_driverGeneralWidget) {
+            m_driverGeneralWidget->deleteLater();
+        }
+        m_driverGeneralWidget = new DriverWidget(2, this);
+        // 添加到布局
+        driverLayout->addWidget(m_driverGeneralWidget);
+        // 可以在这里添加信号连接
+        // TODO: 根据需要添加信号槽连接
+
+    }  else if (m_driverType == "5CH") {
+        // 如果已经存在驱动对象，先删除
+        if (m_driverGeneralWidget) {
+            m_driverGeneralWidget->deleteLater();
+        }
+        m_driverGeneralWidget = new DriverWidget(5, this);
+        // 添加到布局
+        driverLayout->addWidget(m_driverGeneralWidget);
+        // 可以在这里添加信号连接
+        // TODO: 根据需要添加信号槽连接
+
+    } else if (m_driverType == "20CH") {
+        // 如果已经存在驱动对象，先删除
+        if (m_driverGeneralWidget) {
+            m_driverGeneralWidget->deleteLater();
+        }
+        m_driverGeneralWidget = new DriverWidget(20, this);
+        // 添加到布局
+        driverLayout->addWidget(m_driverGeneralWidget);
+        // 可以在这里添加信号连接
+        // TODO: 根据需要添加信号槽连接
+
     } else {
         // 如果没有匹配的驱动类型，显示提示信息
         auto *label = new QLabel("不支持的驱动类型: " + m_driverType, this);

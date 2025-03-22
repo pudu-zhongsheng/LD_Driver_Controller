@@ -47,7 +47,7 @@ void DriveMenu::initUI()
     auto *driverLabel = new QLabel("驱动型号:", this);
     driverLabel->setFixedWidth(80);
     m_driverSelect = new QComboBox(this);
-    m_driverSelect->addItems({"8CH", "20CH"});
+    m_driverSelect->addItems({"1CH", "2CH", "4CH", "5CH", "6CH", "8CH", "10CH", "20CH"});
     driverLayout->addWidget(driverLabel);
     driverLayout->addWidget(m_driverSelect);
 

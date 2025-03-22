@@ -3,8 +3,12 @@
 SerialUtil::SerialUtil(QWidget *parent)
     : QWidget(parent)
     , m_serial(new QSerialPort(this))
+    , sendTimer(new QTimer(this))
 {
     connect(m_serial,&QSerialPort::readyRead,this,&SerialUtil::readData);
+
+    sendTimer.setInterval(50); // 设置间隔50毫秒
+    connect(&sendTimer,&QTimer::timeout,this,&SerialUtil::processQueue);
     connect(m_serial,&QSerialPort::errorOccurred,this,&SerialUtil::onSerialPortError);
 }
 
@@ -83,11 +87,42 @@ void SerialUtil::disconnectPort()
     }
 }
 
+// 添加数据到队列
+void SerialUtil::enqueueData(const QByteArray &data)
+{
+    dataQueue.enqueue(data);
+    if(!sendTimer.isActive()){
+        sendTimer.start();
+    }
+}
+
+// 停止定时发送
+void SerialUtil::endSending()
+{
+    sendTimer.stop();
+    dataQueue.clear();
+}
+
+// 定时器触发，处理队列中的数据
+void SerialUtil::processQueue()
+{
+    if(dataQueue.isEmpty()){
+        endSending();
+        return;
+    }
+    QByteArray data = dataQueue.dequeue();
+    sendData(data);
+}
+
 // 发送数据
 int SerialUtil::sendData(const QByteArray &data)
 {
     if(m_serial->isOpen()){
-       qDebug() << "Send data is : " << data.toHex();
+        // 获取当前时间
+        QDateTime currentTime = QDateTime::currentDateTime();
+        // 将时间格式化为毫秒级
+        QString timeString = currentTime.toString("yyyy-MM-dd hh:mm:ss.zzz");
+        qDebug() << "报文："+data.toHex() + "," + timeString + ",字节数：" + QString::number(data.size());
         return m_serial->write(data);
     }else {
         qDebug() << "Serial port is not open";
@@ -105,6 +140,7 @@ QString SerialUtil::getPortName()
 void SerialUtil::readData()
 {
     QByteArray data = m_serial->readAll();
+    qDebug() << "串口读取数据为：" << data.toHex();
     emit dataReceived(data);
 }
 
@@ -144,22 +180,3 @@ void SerialUtil::onSerialPortError(QSerialPort::SerialPortError error){
     }
 }
 
-bool SerialUtil::write(const QByteArray &data)
-{
-    if (!m_serial || !m_serial->isOpen()) return false;
-    QString time = QDateTime::currentDateTime().toString("HH:mm:ss");
-    qDebug() << "Write data is : " << data.toHex() << ", Time: " << time;
-    return m_serial->write(data) != -1;
-}
-
-QByteArray SerialUtil::readAll()
-{
-    if (!m_serial || !m_serial->isOpen()) return QByteArray();
-    return m_serial->readAll();
-}
-
-bool SerialUtil::waitForResponse(int msecs)
-{
-    if (!m_serial || !m_serial->isOpen()) return false;
-    return m_serial->waitForReadyRead(msecs);
-}

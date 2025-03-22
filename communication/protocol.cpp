@@ -2,7 +2,7 @@
 
 quint16 Protocol::calculateCRC16(const QByteArray &data)
 {
-    quint16 crc = 0xFFFF;
+    quint16 crc = 0x4c44;
     for (char byte : data) {
         crc ^= (quint8)byte;
         for (int i = 0; i < 8; ++i) {

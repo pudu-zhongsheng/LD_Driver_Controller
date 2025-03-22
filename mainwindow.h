@@ -27,7 +27,9 @@
 #include "devices/meter/meterbase.h"
 #include "devices/meter/cl200a/cl200awidget.h"
 #include "devices/driver/driverbase.h"
+#include "devices/driver/driverwidget.h"
 #include "devices/driver/driver8ch/driver8ch.h"
+#include "devices/driver/driver1ch/driver1ch.h"
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
@@ -111,6 +113,7 @@ private:
     LoadBase *m_loadWidget = nullptr;    // 电子负载对象
     MeterBase *m_meterWidget = nullptr; // 照度计对象
     DriverBase *m_driverWidget = nullptr;         // 驱动对象
+    DriverWidget *m_driverGeneralWidget = nullptr;  // 驱动对象
     
     // 最新的电子负载数据
     float m_lastVoltage = 0.0f;
