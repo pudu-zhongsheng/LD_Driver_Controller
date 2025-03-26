@@ -34,8 +34,11 @@ void CL200AWidget::initConnections()
     connect(m_statusTimer, &QTimer::timeout, this, [this]() {
         if (m_serial && m_serial->isConnected()) {
             // 发送查询命令
-            QByteArray cmd = m_protocol->makeQueryCommand();
-            m_serial->sendData(cmd);
+            quint8 header = 0x00;
+            char CFable = '2';   // 禁用
+            char calibrationMode = '0'; // 0规范，1多重
+            QByteArray cmd = m_protocol->readMeasure("02",header,CFable,calibrationMode);
+            m_serial->enqueueData(cmd);
         }
     });
 }
@@ -43,19 +46,19 @@ void CL200AWidget::initConnections()
 void CL200AWidget::handleSerialData(const QByteArray &data)
 {
     QByteArray parsedData;
-    if (m_protocol->parseResponse(data, parsedData)) {
+//    if (m_protocol->parseResponse(data, parsedData)) {
         CL_TwoZeroZeroACOM::MeasurementData measurement;
-        if (m_protocol->parseMeasurementData(parsedData, measurement)) {
-            // 发送测量数据更新信号
-            emit measurementUpdated(
-                measurement.data1,  // 照度
-                measurement.data2,  // 色温
-                measurement.data3,  // 色度
-                0.0f,              // 预留G值
-                0.0f               // 预留B值
-            );
-        }
-    }
+//        if (m_protocol->parseMeasurementData(parsedData, measurement)) {
+//            // 发送测量数据更新信号
+//            emit measurementUpdated(
+//                measurement.data1,  // 照度
+//                measurement.data2,  // 色温
+//                measurement.data3,  // 色度
+//                0.0f,              // 预留G值
+//                0.0f               // 预留B值
+//            );
+//        }
+//    }
 }
 
 void CL200AWidget::connectToPort(const QString &portName)
@@ -94,41 +97,41 @@ void CL200AWidget::disconnectPort()
 void CL200AWidget::setHold(bool hold)
 {
     if (m_serial && m_serial->isConnected()) {
-        QByteArray cmd = m_protocol->makeHoldCommand(hold);
-        m_serial->sendData(cmd);
+        QByteArray cmd = m_protocol->setHoldState55();
+        m_serial->enqueueData(cmd);
     }
 }
 
 void CL200AWidget::setBacklight(bool on)
 {
-    if (m_serial && m_serial->isConnected()) {
-        QByteArray cmd = m_protocol->makeBacklightCommand(on);
-        m_serial->sendData(cmd);
-    }
+//    if (m_serial && m_serial->isConnected()) {
+//        QByteArray cmd = m_protocol->makeBacklightCommand(on);
+//        m_serial->enqueueData(cmd);
+//    }
 }
 
 void CL200AWidget::setRange(int range)
 {
-    if (m_serial && m_serial->isConnected()) {
-        QByteArray cmd = m_protocol->makeRangeCommand(range);
-        m_serial->sendData(cmd);
-    }
+//    if (m_serial && m_serial->isConnected()) {
+//        QByteArray cmd = m_protocol->makeRangeCommand(range);
+//        m_serial->enqueueData(cmd);
+//    }
 }
 
 void CL200AWidget::setPCMode()
 {
-    if (m_serial && m_serial->isConnected()) {
-        QByteArray cmd = m_protocol->makePCConnectCommand();
-        m_serial->sendData(cmd);
-    }
+//    if (m_serial && m_serial->isConnected()) {
+//        QByteArray cmd = m_protocol->makePCConnectCommand();
+//        m_serial->enqueueData(cmd);
+//    }
 }
 
 void CL200AWidget::setEXTMode(bool on)
 {
-    if (m_serial && m_serial->isConnected()) {
-        QByteArray cmd = m_protocol->makeEXTCommand(on);
-        m_serial->sendData(cmd);
-    }
+//    if (m_serial && m_serial->isConnected()) {
+//        QByteArray cmd = m_protocol->makeEXTCommand(on);
+//        m_serial->enqueueData(cmd);
+//    }
 }
 
 void CL200AWidget::startMeasurement()

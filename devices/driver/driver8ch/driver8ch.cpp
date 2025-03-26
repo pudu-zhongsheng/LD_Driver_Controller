@@ -114,7 +114,7 @@ void Driver8CH::onControlChanged()
     QByteArray cmd = m_protocol->makeControlCommand(
         highLevel, startReg, regCount, value1, value2, value3);
     if (m_serial && m_serial->isConnected()) {
-        m_serial->sendData(cmd);
+        m_serial->enqueueData(cmd);
     }
 
     // 更新参数表
@@ -142,7 +142,7 @@ void Driver8CH::onSliderChannelChanged(int channel, int value)
     QByteArray cmd = m_protocol->makeChannelCommand(
         channel + 1, value, m_controlWidget->isHighLevel());
     if (m_serial && m_serial->isConnected()) {
-        m_serial->sendData(cmd);
+        m_serial->enqueueData(cmd);
     }
 
     // 更新参数表
@@ -155,7 +155,7 @@ void Driver8CH::onSliderAllChanged(int value)
     QByteArray cmd = m_protocol->makeAllChannelsCommand(
         value, m_controlWidget->isHighLevel());
     if (m_serial && m_serial->isConnected()) {
-        m_serial->sendData(cmd);
+        m_serial->enqueueData(cmd);
     }
 
     // 更新参数表
@@ -251,7 +251,7 @@ void Driver8CH::sendChannelCommand(int channel, int value)
     QByteArray cmd = m_protocol->makeChannelCommand(
         channel, value, m_controlWidget->isHighLevel());
     if (m_serial && m_serial->isConnected()) {
-        m_serial->sendData(cmd);
+        m_serial->enqueueData(cmd);
     }
 }
 
@@ -260,7 +260,7 @@ void Driver8CH::sendAllChannelsCommand(int value)
     QByteArray cmd = m_protocol->makeAllChannelsCommand(
         value, m_controlWidget->isHighLevel());
     if (m_serial && m_serial->isConnected()) {
-        m_serial->sendData(cmd);
+        m_serial->enqueueData(cmd);
     }
 }
 
@@ -270,7 +270,7 @@ void Driver8CH::sendControlCommand(bool highLevel, int startReg, int regCount,
     QByteArray cmd = m_protocol->makeControlCommand(
         highLevel, startReg, regCount, value1, value2, value3);
     if (m_serial && m_serial->isConnected()) {
-        m_serial->sendData(cmd);
+        m_serial->enqueueData(cmd);
     }
 }
 

@@ -29,7 +29,8 @@
 #include "devices/driver/driverbase.h"
 #include "devices/driver/driverwidget.h"
 #include "devices/driver/driver8ch/driver8ch.h"
-#include "devices/driver/driver1ch/driver1ch.h"
+#include "chart/chartwidget.h"
+
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
@@ -47,8 +48,6 @@ private slots:
     void onSerialPortError(const QString &portName);
     void updateLoadStatus(float voltage, float current, float power);
     void onChartTypeChanged(const QString &type);
-    void clearChart();
-    void exportData();
     void onExportData();        // 导出数据
     void onAnalyzeData();       // 分析数据
     void onBackupData();        // 备份数据
@@ -81,33 +80,16 @@ private:
     QGroupBox *m_connectionGroup;      // 通讯连接状态管理
     QGroupBox *m_loadStatusGroup;      // 电子负载状态
     QGroupBox *m_schemeGroup;          // 软件设置方案
-    QWidget *m_chartWidget;            // 图表区域
     QPushButton *m_backButton;         // 返回按钮
         
     // 添加图表相关成员
-    QChart *m_chart;
-    QChartView *m_chartView;
-    QComboBox *m_chartTypeCombo;
-    QTableWidget *m_dataTable;
-    QPushButton *m_clearChartBtn;
-    QPushButton *m_exportDataBtn;
+    ChartWidget *m_chartWidget;
     
     // 数据存储
     QVector<MeasurementData> m_measurementData;
     
     // 数据采集定时器
     QTimer *m_dataTimer;
-    
-    // 图表系列
-    QLineSeries *m_currentSeries;
-    QLineSeries *m_voltageSeries;
-    QLineSeries *m_powerSeries;
-    QLineSeries *m_resistanceSeries;
-    QLineSeries *m_illuminanceSeries;
-    QLineSeries *m_colorTempSeries;
-    QLineSeries *m_rSeries;
-    QLineSeries *m_gSeries;
-    QLineSeries *m_bSeries;
     
     // 设备对象
     LoadBase *m_loadWidget = nullptr;    // 电子负载对象
@@ -119,6 +101,29 @@ private:
     float m_lastVoltage = 0.0f;
     float m_lastCurrent = 0.0f;
     float m_lastPower = 0.0f;
+    
+    // 新增成员变量
+    QPushButton *m_driverConnectBtn;    // 驱动串口连接按钮
+    QLabel *m_driverStatusLabel;        // 驱动串口状态标签
+    
+    // 驱动通道类型枚举
+    enum class DriverChannelType {
+        CH1 = 1,
+        CH2 = 2,
+        CH4 = 4,
+        CH5 = 5,
+        CH6 = 6,
+        CH8 = 8,
+        CH10 = 10,
+        CH20 = 20,
+        Unknown = 0
+    };
+
+    // 将字符串转换为通道类型的辅助方法
+    DriverChannelType parseDriverType(const QString &type);
+    
+    // 获取通道数的辅助方法
+    int getChannelCount(DriverChannelType type);
     
     void initUI();
     void initConnections();
@@ -138,10 +143,6 @@ private:
     void updateConnectionStatus();
     void disconnectAllPorts();
     void startDataCollection();
-
-    // 图表相关
-    void updateChartDisplay(const QString &type);
-    void updateChartData(const MeasurementData &data);
 
     void setupDataManagement();  // 设置数据管理相关UI和连接
 };

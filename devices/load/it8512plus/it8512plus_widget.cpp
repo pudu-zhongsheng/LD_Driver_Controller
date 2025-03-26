@@ -248,7 +248,7 @@ void IT8512Plus_Widget::initConnections()
             this, [this](double value) {
         if (isConnected()) {
             QByteArray cmd = m_protocol->createSetMaxCurrentCommand(value);
-            m_serial->write(cmd);
+            m_serial->enqueueData(cmd);
         }
     });
 
@@ -256,7 +256,7 @@ void IT8512Plus_Widget::initConnections()
             this, [this](double value) {
         if (isConnected()) {
             QByteArray cmd = m_protocol->createSetMaxPowerCommand(value);
-            m_serial->write(cmd);
+            m_serial->enqueueData(cmd);
         }
     });
 
@@ -308,20 +308,20 @@ void IT8512Plus_Widget::updateDeviceInfo()
     if (!isConnected()) return;
 
     // 获取产品信息
-    m_serial->write(m_protocol->createGetProductMessage());
+    m_serial->enqueueData(m_protocol->createGetProductMessage());
     
     // 获取最大值设置
-    m_serial->write(m_protocol->createGetMaxVoltageCommand());
-    m_serial->write(m_protocol->createGetMaxCurrentCommand());
-    m_serial->write(m_protocol->createGetMaxPowerCommand());
+    m_serial->enqueueData(m_protocol->createGetMaxVoltageCommand());
+    m_serial->enqueueData(m_protocol->createGetMaxCurrentCommand());
+    m_serial->enqueueData(m_protocol->createGetMaxPowerCommand());
     
     // 获取工作模式
-    m_serial->write(m_protocol->createGetWorkModel());
-    m_serial->write(m_protocol->createGetLoadModeCommand());
+    m_serial->enqueueData(m_protocol->createGetWorkModel());
+    m_serial->enqueueData(m_protocol->createGetLoadModeCommand());
     
     // 获取当前值设置
-    m_serial->write(m_protocol->createGetConstantCurrentCommand());
-    m_serial->write(m_protocol->createGetDynamicCurrentParamsCommand());
+    m_serial->enqueueData(m_protocol->createGetConstantCurrentCommand());
+    m_serial->enqueueData(m_protocol->createGetDynamicCurrentParamsCommand());
 }
 
 void IT8512Plus_Widget::updateStatus()
@@ -332,7 +332,7 @@ void IT8512Plus_Widget::updateStatus()
     }
     
     QByteArray cmd = m_protocol->createGetInputCommand();
-    m_serial->write(cmd);
+    m_serial->enqueueData(cmd);
 }
 
 void IT8512Plus_Widget::onControlModeChanged()
@@ -341,7 +341,7 @@ void IT8512Plus_Widget::onControlModeChanged()
 
     // 切换控制模式
     QByteArray cmd = m_protocol->createControlModeCommand(m_isRemoteMode ? 0 : 1);
-    m_serial->write(cmd);
+    m_serial->enqueueData(cmd);
 }
 
 void IT8512Plus_Widget::onOutputStateChanged()
@@ -350,7 +350,7 @@ void IT8512Plus_Widget::onOutputStateChanged()
 
     // 切换输出状态
     QByteArray cmd = m_protocol->createLoadStateCommand(m_isOutput ? 0 : 1);
-    m_serial->write(cmd);
+    m_serial->enqueueData(cmd);
 }
 
 void IT8512Plus_Widget::onWorkModeChanged()
@@ -368,7 +368,7 @@ void IT8512Plus_Widget::onWorkModeChanged()
     if (isDynamic) {
         mode = 0x02;
         QByteArray cmd = m_protocol->createSetWorkModel(mode);
-        m_serial->write(cmd);
+        m_serial->enqueueData(cmd);
 
         // 暂时阻断信号连接
         m_value1SpinBox->blockSignals(true);
@@ -380,49 +380,49 @@ void IT8512Plus_Widget::onWorkModeChanged()
         if (m_dcModeRadio->isChecked()) {
             type = "DC";
             // 读取动态电流参数
-            m_serial->write(m_protocol->createGetDynamicCurrentParamsCommand());
+            m_serial->enqueueData(m_protocol->createGetDynamicCurrentParamsCommand());
         } else if (m_dvModeRadio->isChecked()) {
             type = "DV";
             // 读取动态电压参数
-            m_serial->write(m_protocol->createGetDynamicVoltageParamsCommand());
+            m_serial->enqueueData(m_protocol->createGetDynamicVoltageParamsCommand());
         } else if (m_dwModeRadio->isChecked()) {
             type = "DW";
             // 读取动态功率参数
-            m_serial->write(m_protocol->createGetDynamicPowerParamsCommand());
+            m_serial->enqueueData(m_protocol->createGetDynamicPowerParamsCommand());
         } else if (m_drModeRadio->isChecked()) {
             type = "DR";
             // 读取动态电阻参数
-            m_serial->write(m_protocol->createGetDynamicResistanceParamsCommand());
+            m_serial->enqueueData(m_protocol->createGetDynamicResistanceParamsCommand());
         }
         
     } else {
         mode = 0x00;
         QByteArray cmd = m_protocol->createSetWorkModel(mode);
-        m_serial->write(cmd);
+        m_serial->enqueueData(cmd);
         // 基础模式
         if (m_ccModeRadio->isChecked()) {
             type = "CC";
             workMode = 0x00;
             // 读取定值电流
-            m_serial->write(m_protocol->createGetConstantCurrentCommand());
+            m_serial->enqueueData(m_protocol->createGetConstantCurrentCommand());
         } else if (m_cvModeRadio->isChecked()) {
             type = "CV";
             workMode = 0x01;
             // 读取定值电压
-            m_serial->write(m_protocol->createGetConstantVoltageCommand());
+            m_serial->enqueueData(m_protocol->createGetConstantVoltageCommand());
         } else if (m_cwModeRadio->isChecked()) {
             type = "CW";
             workMode = 0x02;
             // 读取定值功率
-            m_serial->write(m_protocol->createGetConstantPowerCommand());
+            m_serial->enqueueData(m_protocol->createGetConstantPowerCommand());
         } else if (m_crModeRadio->isChecked()) {
             type = "CR";
             workMode = 0x03;
             // 读取定值电阻
-            m_serial->write(m_protocol->createGetConstantResistanceCommand());
+            m_serial->enqueueData(m_protocol->createGetConstantResistanceCommand());
         }
         // 设置负载模式
-        m_serial->write(m_protocol->createSetLoadModeCommand(workMode));
+        m_serial->enqueueData(m_protocol->createSetLoadModeCommand(workMode));
     }
     
     m_workTypeLabel->setText(type);
@@ -449,7 +449,7 @@ void IT8512Plus_Widget::onValueSettingChanged()
     }
 
     if (!cmd.isEmpty()) {
-        m_serial->write(cmd);
+        m_serial->enqueueData(cmd);
     }
 }
 
@@ -476,7 +476,7 @@ void IT8512Plus_Widget::onDynamicSettingChanged()
     }
 
     if (!cmd.isEmpty()) {
-        m_serial->write(cmd);
+        m_serial->enqueueData(cmd);
     }
 }
 
@@ -485,7 +485,7 @@ void IT8512Plus_Widget::onTriggerSignal()
     if (!isConnected()) return;
     
     QByteArray cmd = m_protocol->createNewTriggerSignal();
-    m_serial->write(cmd);
+    m_serial->enqueueData(cmd);
 }
 
 void IT8512Plus_Widget::checkTargetValues()
@@ -546,7 +546,7 @@ bool IT8512Plus_Widget::connectToPort(const QString &portName)
         m_isConnecting = true;
         // 发送远程控制模式命令
         QByteArray cmd = m_protocol->createControlModeCommand(0x01);
-        m_serial->write(cmd);
+        m_serial->enqueueData(cmd);
         
         // 等待响应超时处理
         QTimer::singleShot(1000, this, [this]() {
@@ -652,7 +652,7 @@ void IT8512Plus_Widget::handleSetCommandResponse(const QByteArray &packet)
         m_isConnecting = false;
         m_isRemoteMode = true;
         m_statusTimer->start(2000);  // 启动状态更新定时器
-        emit serialConnected(m_serial->portName());
+        emit serialConnected(m_serial->getPortName());
         
         // 连接成功后获取设备信息
         QTimer::singleShot(100, this, [this]() {
@@ -859,7 +859,7 @@ void IT8512Plus_Widget::onMaxVoltageChanged(double value)
 {
     if (m_serial && m_serial->isConnected()) {
         QByteArray cmd = m_protocol->createSetMaxVoltageCommand(value);
-        m_serial->write(cmd);
+        m_serial->enqueueData(cmd);
     }
     updateInputLimits();
 }
@@ -938,17 +938,17 @@ void IT8512Plus_Widget::onWorkModeSelectChanged(int index)
     if (isConnected()) {
         if (m_isBasicMode) {
             // 读取基础模式的设置
-            m_serial->write(m_protocol->createGetLoadModeCommand());  // 读取当前工作类型
-            m_serial->write(m_protocol->createGetConstantCurrentCommand());
-            m_serial->write(m_protocol->createGetConstantVoltageCommand());
-            m_serial->write(m_protocol->createGetConstantPowerCommand());
-            m_serial->write(m_protocol->createGetConstantResistanceCommand());
+            m_serial->enqueueData(m_protocol->createGetLoadModeCommand());  // 读取当前工作类型
+            m_serial->enqueueData(m_protocol->createGetConstantCurrentCommand());
+            m_serial->enqueueData(m_protocol->createGetConstantVoltageCommand());
+            m_serial->enqueueData(m_protocol->createGetConstantPowerCommand());
+            m_serial->enqueueData(m_protocol->createGetConstantResistanceCommand());
         } else {
             // 读取动态测试的设置
-            m_serial->write(m_protocol->createGetDynamicCurrentParamsCommand());
-            m_serial->write(m_protocol->createGetDynamicVoltageParamsCommand());
-            m_serial->write(m_protocol->createGetDynamicPowerParamsCommand());
-            m_serial->write(m_protocol->createGetDynamicResistanceParamsCommand());
+            m_serial->enqueueData(m_protocol->createGetDynamicCurrentParamsCommand());
+            m_serial->enqueueData(m_protocol->createGetDynamicVoltageParamsCommand());
+            m_serial->enqueueData(m_protocol->createGetDynamicPowerParamsCommand());
+            m_serial->enqueueData(m_protocol->createGetDynamicResistanceParamsCommand());
         }
     }
     

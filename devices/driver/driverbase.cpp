@@ -32,6 +32,6 @@ void DriverBase::stopScan()
 void DriverBase::sendCommand(const QByteArray &cmd)
 {
     if (m_serial && m_serial->isConnected()) {
-        m_serial->sendData(cmd);
+        m_serial->enqueueData(cmd);
     }
 } 

@@ -119,11 +119,81 @@ void MainWindow::createConnectionArea()
     auto *driverConnBox = new QGroupBox("驱动连接", this);
     auto *driverLayout = new QVBoxLayout(driverConnBox);
     auto *driverPortCombo = new QComboBox(this);
-    auto *driverConnBtn = new QPushButton("连接", this);
-    driverConnBtn->setObjectName("driverConnBtn");
-    driverConnBtn->setCheckable(true);
+    m_driverConnectBtn = new QPushButton("连接", this);  // 使用类成员变量
+    m_driverConnectBtn->setObjectName("driverConnBtn");
+    
+//    // 设置初始样式
+//    m_driverConnectBtn->setStyleSheet(R"(
+//        QPushButton#driverConnBtn {
+//            background-color: #337ab7;
+//            color: white;
+//            border: none;
+//            padding: 5px 15px;
+//            border-radius: 3px;
+//        }
+//        QPushButton#driverConnBtn:hover {
+//            background-color: #286090;
+//        }
+//        QPushButton#driverConnBtn:disabled {
+//            background-color: #cccccc;
+//        }
+//        QPushButton#driverConnBtn:checked {
+//            background-color: #4CAF50;
+//        }
+//    )");
+
     driverLayout->addWidget(driverPortCombo);
-    driverLayout->addWidget(driverConnBtn);
+    driverLayout->addWidget(m_driverConnectBtn);
+
+    // 连接按钮点击事件
+    connect(m_driverConnectBtn, &QPushButton::clicked, this, [=]() {
+        // 检查是否已连接
+        DriverChannelType channelType = parseDriverType(m_driverType);
+        bool isConnected = false;
+        
+        if (channelType == DriverChannelType::CH8) {
+            isConnected = m_driverWidget && m_driverWidget->isConnected();
+        } else if (channelType != DriverChannelType::Unknown) {
+            isConnected = m_driverGeneralWidget && m_driverGeneralWidget->isConnected();
+        }
+        
+        if (isConnected) {
+            // 已连接，执行断开操作
+            if (channelType == DriverChannelType::CH8 && m_driverWidget) {
+                m_driverWidget->disconnectPort();
+            } else if (m_driverGeneralWidget) {
+                m_driverGeneralWidget->disconnectPort();
+            }
+        } else {
+            // 未连接，执行连接操作
+            QString portName = driverPortCombo->currentText();
+            if (portName.isEmpty()) {
+                QMessageBox::warning(this, "错误", "请选择驱动串口");
+                return;
+            }
+            
+            // 禁用按钮，防止重复点击
+            m_driverConnectBtn->setEnabled(false);
+            
+            // 设置连接超时定时器
+            QTimer::singleShot(5000, this, [this]() {
+                if (!m_driverConnectBtn->isEnabled()) {
+                    m_driverConnectBtn->setEnabled(true);
+                    m_driverConnectBtn->setChecked(false);
+                    m_driverConnectBtn->setText("连接");
+                    ToastMessage *toast = new ToastMessage("连接超时", this);
+                    toast->showToast(1000);
+                }
+            });
+            
+            // 尝试连接
+            if (channelType == DriverChannelType::CH8 && m_driverWidget) {
+                m_driverWidget->connectToPort(portName);
+            } else if (m_driverGeneralWidget) {
+                m_driverGeneralWidget->connectToPort(portName);
+            }
+        }
+    });
 
     // 电子负载连接状态
     auto *loadConnBox = new QGroupBox("电子负载连接", this);
@@ -148,19 +218,6 @@ void MainWindow::createConnectionArea()
     layout->addWidget(driverConnBox);
     layout->addWidget(loadConnBox);
     layout->addWidget(meterConnBox);
-
-    // 连接按钮点击事件
-    connect(driverConnBtn, &QPushButton::clicked, this, [=](bool checked) {
-        if (checked) {
-            if (m_driverWidget) {
-                m_driverWidget->connectToPort(driverPortCombo->currentText());
-            }
-        } else {
-            if (m_driverWidget) {
-                m_driverWidget->disconnectPort();
-            }
-        }
-    });
 
     // 电子负载连接按钮处理
     connect(loadConnBtn, &QPushButton::clicked, this, [=](bool checked) {
@@ -204,6 +261,8 @@ void MainWindow::createConnectionArea()
         bool driverConnected = false;
         if (m_driverType == "8CH") {
             driverConnected = m_driverWidget && m_driverWidget->isConnected();
+        } else if (m_driverType == "1CH" || m_driverType == "2CH" || m_driverType == "5CH" || m_driverType == "20CH") {
+            driverConnected = m_driverGeneralWidget && m_driverGeneralWidget->isConnected();
         }
         if (!driverConnected) {
             driverPortCombo->clear();
@@ -465,7 +524,7 @@ void MainWindow::saveScheme(const QString &name)
     
     // 保存图表设置
     QJsonObject chartSettings;
-    chartSettings["type"] = m_chartTypeCombo->currentText();
+//    chartSettings["type"] = m_chartTypeCombo->currentText();
     schemeData["chart"] = chartSettings;
     
     QJsonDocument doc(schemeData);
@@ -508,7 +567,7 @@ void MainWindow::loadScheme(const QString &name)
     // 加载图表设置
     if (schemeData.contains("chart")) {
         QJsonObject chartSettings = schemeData["chart"].toObject();
-        m_chartTypeCombo->setCurrentText(chartSettings["type"].toString());
+//        m_chartTypeCombo->setCurrentText(chartSettings["type"].toString());
     }
 
     ToastMessage *toast = new ToastMessage("方案加载成功", this);
@@ -523,169 +582,13 @@ void MainWindow::loadScheme(const QString &name)
 */
 void MainWindow::createChartArea()
 {
-    auto *chartGroup = new QGroupBox("数据图表", this);
-    auto *layout = new QVBoxLayout(chartGroup);
-
-    // 图表类型选择和控制按钮
-    auto *controlLayout = new QHBoxLayout();
-    controlLayout->addWidget(new QLabel("图表类型:", this));
-    m_chartTypeCombo = new QComboBox(this);
-    m_chartTypeCombo->addItems({
-        "电流-时间",
-        "电压/功率/电阻-时间",
-        "照度-时间",
-        "色温RGB-时间"
-    });
-    controlLayout->addWidget(m_chartTypeCombo);
-
-    m_clearChartBtn = new QPushButton("清空图表", this);
-    m_exportDataBtn = new QPushButton("导出数据", this);
-    controlLayout->addWidget(m_clearChartBtn);
-    controlLayout->addWidget(m_exportDataBtn);
-    layout->addLayout(controlLayout);
-
-    // 创建图表
-    m_chart = new QChart();
-    m_chart->setAnimationOptions(QChart::SeriesAnimations);
-    m_chartView = new QChartView(m_chart, this);
-    m_chartView->setRenderHint(QPainter::Antialiasing);
-    layout->addWidget(m_chartView);
-
-    // 创建数据系列
-    m_currentSeries = new QLineSeries(this);
-    m_voltageSeries = new QLineSeries(this);
-    m_powerSeries = new QLineSeries(this);
-    m_resistanceSeries = new QLineSeries(this);
-    m_illuminanceSeries = new QLineSeries(this);
-    m_colorTempSeries = new QLineSeries(this);
-    m_rSeries = new QLineSeries(this);
-    m_gSeries = new QLineSeries(this);
-    m_bSeries = new QLineSeries(this);
-
-    // 设置系列名称
-    m_currentSeries->setName("电流 (A)");
-    m_voltageSeries->setName("电压 (V)");
-    m_powerSeries->setName("功率 (W)");
-    m_resistanceSeries->setName("电阻 (Ω)");
-    m_illuminanceSeries->setName("照度 (lx)");
-    m_colorTempSeries->setName("色温 (K)");
-    m_rSeries->setName("R");
-    m_gSeries->setName("G");
-    m_bSeries->setName("B");
-
-    // 初始显示电流-时间图表
-    updateChartDisplay("电流-时间");
-
-    // 创建数据表格
-    m_dataTable = new QTableWidget(this);
-    m_dataTable->setColumnCount(10);
-    m_dataTable->setHorizontalHeaderLabels({
-        "时间", "电流(A)", "电压(V)", "功率(W)", "电阻(Ω)",
-        "照度(lx)", "色温(K)", "R", "G", "B"
-    });
-    m_dataTable->hide(); // 默认隐藏，点击导出时显示
-
-    m_chartWidget = chartGroup;
-}
-
-void MainWindow::updateChartDisplay(const QString &type)
-{
-    m_chart->removeAllSeries();
+    // 创建图表组件
+    m_chartWidget = new ChartWidget(this);
+    m_chartWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     
-    // 设置X轴（时间）
-    auto *axisX = new QDateTimeAxis;
-    axisX->setFormat("hh:mm:ss");
-    axisX->setTitleText("时间");
-    m_chart->addAxis(axisX, Qt::AlignBottom);
-
-    // 设置Y轴
-    auto *axisY = new QValueAxis;
-    
-    if (type == "电流-时间") {
-        m_chart->setTitle("电流-时间曲线");
-        m_chart->addSeries(m_currentSeries);
-        axisY->setTitleText("电流 (A)");
-    }
-    else if (type == "电压/功率/电阻-时间") {
-        m_chart->setTitle("电压/功率/电阻-时间曲线");
-        m_chart->addSeries(m_voltageSeries);
-        m_chart->addSeries(m_powerSeries);
-        m_chart->addSeries(m_resistanceSeries);
-        axisY->setTitleText("数值");
-    }
-    else if (type == "照度-时间") {
-        m_chart->setTitle("照度-时间曲线");
-        m_chart->addSeries(m_illuminanceSeries);
-        m_chart->addSeries(m_colorTempSeries);
-        axisY->setTitleText("照度 (lx)");
-    }
-    else if (type == "色温RGB-时间") {
-        m_chart->setTitle("RGB-时间曲线");
-        m_chart->addSeries(m_rSeries);
-        m_chart->addSeries(m_gSeries);
-        m_chart->addSeries(m_bSeries);
-        axisY->setTitleText("RGB值");
-    }
-
-    m_chart->addAxis(axisY, Qt::AlignLeft);
-
-    // 将所有系列附加到坐标轴
-    const auto series = m_chart->series();
-    for (auto *s : series) {
-        s->attachAxis(axisX);
-        s->attachAxis(axisY);
-    }
-}
-
-void MainWindow::clearChart()
-{
-    m_measurementData.clear();
-    m_currentSeries->clear();
-    m_voltageSeries->clear();
-    m_powerSeries->clear();
-    m_resistanceSeries->clear();
-    m_illuminanceSeries->clear();
-    m_colorTempSeries->clear();
-    m_rSeries->clear();
-    m_gSeries->clear();
-    m_bSeries->clear();
-    m_dataTable->setRowCount(0);
-}
-
-void MainWindow::exportData()
-{
-    QString fileName = QFileDialog::getSaveFileName(this,
-        "导出数据", "", "CSV文件 (*.csv)");
-    if (fileName.isEmpty())
-        return;
-
-    QFile file(fileName);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        QMessageBox::warning(this, "错误", "无法打开文件进行写入");
-        return;
-    }
-
-    QTextStream out(&file);
-    // 写入表头
-    out << "时间,电流(A),电压(V),功率(W),电阻(Ω),照度(lx),色温(K),R,G,B\n";
-
-    // 写入数据
-    for (const auto &data : m_measurementData) {
-        out << data.timestamp.toString("yyyy-MM-dd hh:mm:ss.zzz") << ","
-            << QString::number(data.current, 'f', 3) << ","
-            << QString::number(data.voltage, 'f', 3) << ","
-            << QString::number(data.power, 'f', 3) << ","
-            << QString::number(data.resistance, 'f', 3) << ","
-            << QString::number(data.illuminance, 'f', 3) << ","
-            << QString::number(data.colorTemp, 'f', 3) << ","
-            << QString::number(data.r, 'f', 3) << ","
-            << QString::number(data.g, 'f', 3) << ","
-            << QString::number(data.b, 'f', 3) << "\n";
-    }
-
-    file.close();
-    ToastMessage *toast = new ToastMessage("数据导出成功", this);
-    toast->showToast(1000);
+    // 连接信号
+    connect(m_chartWidget, &ChartWidget::chartTypeChanged,
+            this, &MainWindow::onChartTypeChanged);
 }
 
 void MainWindow::onBackButtonClicked()
@@ -709,14 +612,6 @@ void MainWindow::initConnections()
 {
     // ... 其他连接 ...
 
-    // 图表相关连接
-    connect(m_chartTypeCombo, &QComboBox::currentTextChanged,
-            this, &MainWindow::updateChartDisplay);
-    connect(m_clearChartBtn, &QPushButton::clicked,
-            this, &MainWindow::clearChart);
-    connect(m_exportDataBtn, &QPushButton::clicked,
-            this, &MainWindow::exportData);
-    
     // 返回按钮
     connect(m_backButton, &QPushButton::clicked,
             this, &MainWindow::onBackButtonClicked);
@@ -739,75 +634,6 @@ void MainWindow::startDataCollection()
     // 启动定时器
     m_dataTimer->start();
     LOG_INFO("数据采集已启动");
-}
-
-void MainWindow::updateChartData(const MeasurementData &data)
-{
-    // 添加数据到存储
-    m_measurementData.append(data);
-    
-    // 限制数据点数量（保留最近1小时的数据）
-    while (m_measurementData.size() > 36000) { // 100ms * 36000 = 1小时
-        m_measurementData.removeFirst();
-    }
-
-    // 更新图表
-    qint64 timestamp = data.timestamp.toMSecsSinceEpoch();
-    
-    m_currentSeries->append(timestamp, data.current);
-    m_voltageSeries->append(timestamp, data.voltage);
-    m_powerSeries->append(timestamp, data.power);
-    m_resistanceSeries->append(timestamp, data.resistance);
-    m_illuminanceSeries->append(timestamp, data.illuminance);
-    m_colorTempSeries->append(timestamp, data.colorTemp);
-    m_rSeries->append(timestamp, data.r);
-    m_gSeries->append(timestamp, data.g);
-    m_bSeries->append(timestamp, data.b);
-
-    // 更新X轴范围（显示最近5分钟的数据）
-    auto *axisX = qobject_cast<QDateTimeAxis*>(m_chart->axes(Qt::Horizontal).first());
-    if (axisX) {
-        QDateTime now = QDateTime::currentDateTime();
-        axisX->setRange(now.addSecs(-300), now);
-    }
-
-    // 更新Y轴范围
-    auto *axisY = qobject_cast<QValueAxis*>(m_chart->axes(Qt::Vertical).first());
-    if (axisY) {
-        // 根据当前显示的图表类型调整Y轴范围
-        QString chartType = m_chartTypeCombo->currentText();
-        if (chartType == "电流-时间") {
-            double maxCurrent = Config::getValue(ConfigKeys::ELOAD_MAX_CURRENT, 5.0).toDouble();
-            axisY->setRange(0, maxCurrent);
-        }
-        else if (chartType == "电压/功率/电阻-时间") {
-            double maxVoltage = Config::getValue(ConfigKeys::ELOAD_MAX_VOLTAGE, 30.0).toDouble();
-            axisY->setRange(0, maxVoltage);
-        }
-        // ... 其他图表类型的范围设置
-    }
-
-    // 更新数据表格
-    int row = m_dataTable->rowCount();
-    m_dataTable->insertRow(row);
-    m_dataTable->setItem(row, 0, new QTableWidgetItem(data.timestamp.toString("hh:mm:ss.zzz")));
-    m_dataTable->setItem(row, 1, new QTableWidgetItem(QString::number(data.current, 'f', 3)));
-    m_dataTable->setItem(row, 2, new QTableWidgetItem(QString::number(data.voltage, 'f', 3)));
-    m_dataTable->setItem(row, 3, new QTableWidgetItem(QString::number(data.power, 'f', 3)));
-    m_dataTable->setItem(row, 4, new QTableWidgetItem(QString::number(data.resistance, 'f', 3)));
-    m_dataTable->setItem(row, 5, new QTableWidgetItem(QString::number(data.illuminance, 'f', 3)));
-    m_dataTable->setItem(row, 6, new QTableWidgetItem(QString::number(data.colorTemp, 'f', 3)));
-    m_dataTable->setItem(row, 7, new QTableWidgetItem(QString::number(data.r, 'f', 3)));
-    m_dataTable->setItem(row, 8, new QTableWidgetItem(QString::number(data.g, 'f', 3)));
-    m_dataTable->setItem(row, 9, new QTableWidgetItem(QString::number(data.b, 'f', 3)));
-
-    // 限制表格行数
-    while (m_dataTable->rowCount() > 1000) { // 保留最近1000条记录
-        m_dataTable->removeRow(0);
-    }
-
-    // 自动滚动到最新数据
-    m_dataTable->scrollToBottom();
 }
 
 void MainWindow::setupDataManagement()
@@ -836,8 +662,6 @@ void MainWindow::setupDataManagement()
     // 连接数据管理器信号
     connect(DataManager::instance(), &DataManager::dataAdded,
             this, &MainWindow::onDataAdded);
-    connect(DataManager::instance(), &DataManager::dataCleared,
-            this, &MainWindow::clearChart);
 }
 
 void MainWindow::onExportData()
@@ -976,7 +800,9 @@ void MainWindow::onRestoreData()
 void MainWindow::onDataAdded(const MeasurementData &data)
 {
     // 更新图表
-    updateChartData(data);
+    if (m_chartWidget) {
+        m_chartWidget->updateChartData(data);
+    }
     
     // 更新状态栏
     QString status = QString("最新数据 - 电流: %1A  电压: %2V  功率: %3W  照度: %4lx")
@@ -1009,6 +835,9 @@ void MainWindow::disconnectAllPorts()
     if (m_driverWidget) {
         m_driverWidget->disconnectPort();
     }
+    if (m_driverGeneralWidget) {
+        m_driverGeneralWidget->disconnectPort();
+    }
 
     // 断开电子负载
     if (m_loadWidget) {
@@ -1027,82 +856,87 @@ void MainWindow::createDriverArea()
     auto *driverLayout = new QVBoxLayout();
     driverLayout->setSpacing(20);
 
-    // 根据选择的驱动型号创建对应的控制界面
-    if (m_driverType == "8CH") {
-        // 如果已经存在驱动对象，先删除
-        if (m_driverWidget) {
-            m_driverWidget->deleteLater();
-        }
-
-        // 创建8通道驱动对象
-        m_driverWidget = new Driver8CH(this);
-        
-        // 连接信号
-        connect(m_driverWidget, &DriverBase::serialConnected,
-                this, &MainWindow::onDriverSerialConnected);
-        connect(m_driverWidget, &DriverBase::serialDisconnected,
-                this, &MainWindow::onDriverSerialDisconnected);
-        connect(m_driverWidget, &DriverBase::serialError,
-                this, &MainWindow::onDriverSerialError);
-
-        // 加载上次的配置
-        QVariant value = Config::getValue("driver_settings");
-        QJsonObject lastSettings = value.toJsonObject();
-        if (!lastSettings.isEmpty()) {
-            m_driverWidget->applySettings(lastSettings);
-        }
-
-        // 添加到布局
-        driverLayout->addWidget(m_driverWidget);
-    } else if (m_driverType == "1CH") {
-        // 如果已经存在驱动对象，先删除
-        if (m_driverGeneralWidget) {
-            m_driverGeneralWidget->deleteLater();
-        }
-        m_driverGeneralWidget = new DriverWidget(1, this);
-        // 添加到布局
-        driverLayout->addWidget(m_driverGeneralWidget);
-        // 可以在这里添加信号连接
-        // TODO: 根据需要添加信号槽连接
-        
-    }  else if (m_driverType == "2CH") {
-        // 如果已经存在驱动对象，先删除
-        if (m_driverGeneralWidget) {
-            m_driverGeneralWidget->deleteLater();
-        }
-        m_driverGeneralWidget = new DriverWidget(2, this);
-        // 添加到布局
-        driverLayout->addWidget(m_driverGeneralWidget);
-        // 可以在这里添加信号连接
-        // TODO: 根据需要添加信号槽连接
-
-    }  else if (m_driverType == "5CH") {
-        // 如果已经存在驱动对象，先删除
-        if (m_driverGeneralWidget) {
-            m_driverGeneralWidget->deleteLater();
-        }
-        m_driverGeneralWidget = new DriverWidget(5, this);
-        // 添加到布局
-        driverLayout->addWidget(m_driverGeneralWidget);
-        // 可以在这里添加信号连接
-        // TODO: 根据需要添加信号槽连接
-
-    } else if (m_driverType == "20CH") {
-        // 如果已经存在驱动对象，先删除
-        if (m_driverGeneralWidget) {
-            m_driverGeneralWidget->deleteLater();
-        }
-        m_driverGeneralWidget = new DriverWidget(20, this);
-        // 添加到布局
-        driverLayout->addWidget(m_driverGeneralWidget);
-        // 可以在这里添加信号连接
-        // TODO: 根据需要添加信号槽连接
-
-    } else {
-        // 如果没有匹配的驱动类型，显示提示信息
+    // 解析驱动类型
+    DriverChannelType channelType = parseDriverType(m_driverType);
+    
+    if (channelType == DriverChannelType::Unknown) {
+        // 处理无效的驱动类型
         auto *label = new QLabel("不支持的驱动类型: " + m_driverType, this);
         label->setAlignment(Qt::AlignCenter);
         driverLayout->addWidget(label);
+    } else {
+        // 获取通道数
+        int channelCount = getChannelCount(channelType);
+        
+        // 清理现有的驱动对象
+        if (m_driverWidget) {
+            m_driverWidget->deleteLater();
+            m_driverWidget = nullptr;
+        }
+        if (m_driverGeneralWidget) {
+            m_driverGeneralWidget->deleteLater();
+            m_driverGeneralWidget = nullptr;
+        }
+        
+        // 根据通道数创建相应的驱动对象
+        if (channelType == DriverChannelType::CH8) {
+            // 8通道驱动使用专门的实现
+            m_driverWidget = new Driver8CH(this);
+            
+            // 连接信号
+            connect(m_driverWidget, &DriverBase::serialConnected,
+                    this, &MainWindow::onDriverSerialConnected);
+            connect(m_driverWidget, &DriverBase::serialDisconnected,
+                    this, &MainWindow::onDriverSerialDisconnected);
+            connect(m_driverWidget, &DriverBase::serialError,
+                    this, &MainWindow::onDriverSerialError);
+
+            // 加载上次的配置
+            QVariant value = Config::getValue("driver_settings");
+            QJsonObject lastSettings = value.toJsonObject();
+            if (!lastSettings.isEmpty()) {
+                m_driverWidget->applySettings(lastSettings);
+            }
+
+            // 添加到布局
+            driverLayout->addWidget(m_driverWidget);
+            
+            // 保存配置
+            connect(m_driverWidget, &DriverBase::settingsChanged, this, [this]() {
+                if (auto *driver = qobject_cast<Driver8CH*>(m_driverWidget)) {
+                    QJsonObject settings = driver->getSettings();
+                    Config::setValue("driver_settings", settings);
+                }
+            });
+        } else {
+            // 其他通道数使用通用驱动实现
+            m_driverGeneralWidget = new DriverWidget(channelCount, this);
+            
+            // 连接信号
+            connect(m_driverGeneralWidget, &DriverWidget::serialConnected,
+                    this, &MainWindow::onDriverSerialConnected);
+            connect(m_driverGeneralWidget, &DriverWidget::serialDisconnected,
+                    this, &MainWindow::onDriverSerialDisconnected);
+            connect(m_driverGeneralWidget, &DriverWidget::serialError,
+                    this, &MainWindow::onDriverSerialError);
+                    
+            // 添加到布局
+            driverLayout->addWidget(m_driverGeneralWidget);
+            
+            // 加载该通道数对应的配置
+            QString configKey = QString("driver_settings_%1ch").arg(channelCount);
+            QVariant value = Config::getValue(configKey);
+            QJsonObject lastSettings = value.toJsonObject();
+            if (!lastSettings.isEmpty()) {
+                m_driverGeneralWidget->applySettings(lastSettings);
+            }
+            
+            // 保存配置
+            connect(m_driverGeneralWidget, &DriverWidget::settingsChanged, this, [this, configKey]() {
+                QJsonObject settings = m_driverGeneralWidget->getSettings();
+                Config::setValue(configKey, settings);
+            });
+        }
     }
 
     // 创建一个容器widget来包含布局
@@ -1120,14 +954,6 @@ void MainWindow::createDriverArea()
     // 添加到驱动区域
     m_driverArea->addWidget(driverContainer);
     m_driverArea->setCurrentWidget(driverContainer);
-
-    // 保存配置
-    connect(m_driverWidget, &DriverBase::settingsChanged, this, [this]() {
-        if (auto *driver = qobject_cast<Driver8CH*>(m_driverWidget)) {
-            QJsonObject settings = driver->getSettings();
-            Config::setValue("driver_settings", settings);
-        }
-    });
 }
 
 void MainWindow::updateLoadStatus(float voltage, float current, float power)
@@ -1159,7 +985,8 @@ void MainWindow::onSerialPortError(const QString &portName)
 
 void MainWindow::onChartTypeChanged(const QString &type)
 {
-    updateChartDisplay(type);
+    // 可能需要的其他操作
+    // 如果没有特别需要处理的，可以删除此方法及其声明
 }
 
 void MainWindow::updateConnectionStatus()
@@ -1167,9 +994,14 @@ void MainWindow::updateConnectionStatus()
     // 更新驱动连接状态
     if (auto *driverConnBtn = m_connectionGroup->findChild<QPushButton*>("driverConnBtn")) {
         bool connected = false;
-        if (m_driverType == "8CH") {
+        DriverChannelType channelType = parseDriverType(m_driverType);
+        
+        if (channelType == DriverChannelType::CH8) {
             connected = m_driverWidget && m_driverWidget->isConnected();
+        } else if (channelType != DriverChannelType::Unknown) {
+            connected = m_driverGeneralWidget && m_driverGeneralWidget->isConnected();
         }
+        
         driverConnBtn->setText(connected ? "断开" : "连接");
         driverConnBtn->setChecked(connected);
         driverConnBtn->setStyleSheet(connected ? "background-color: #4CAF50;" : "");
@@ -1279,32 +1111,81 @@ void MainWindow::onMeterDataUpdated(float illuminance, float colorTemp, float r,
         measurementData.power = m_lastPower;
         measurementData.resistance = m_lastVoltage / m_lastCurrent;
     }
-    
-    updateChartData(measurementData);
+
+    // 确保图表更新
+    if(m_chartWidget) {
+        m_chartWidget->updateChartData(measurementData);
+    }
+
+    // 也可以添加到数据管理器
+    DataManager::instance()->addMeasurement(measurementData);
 }
 
 void MainWindow::onDriverSerialConnected(const QString &portName)
 {
-    updateConnectionStatus();
-    ToastMessage *toast = new ToastMessage("驱动已连接到 " + portName, this);
+    // 恢复按钮状态
+    m_driverConnectBtn->setEnabled(true);
+    m_driverConnectBtn->setChecked(true);
+    m_driverConnectBtn->setText("断开");
+    
+    // 更新状态标签
+    m_driverStatusLabel->setText("已连接 " + portName);
+    m_driverStatusLabel->setStyleSheet("QLabel { color: green; }");
+    
+    ToastMessage *toast = new ToastMessage("驱动连接成功", this);
     toast->showToast(1000);
 }
 
 void MainWindow::onDriverSerialDisconnected()
 {
-    updateConnectionStatus();
-    if (auto *driverConnBtn = m_connectionGroup->findChild<QPushButton*>("driverConnBtn")) {
-        driverConnBtn->setChecked(false);
-        driverConnBtn->setText("连接");
-    }
+    // 恢复按钮状态
+    m_driverConnectBtn->setEnabled(true);
+    m_driverConnectBtn->setChecked(false);
+    m_driverConnectBtn->setText("连接");
+    
+    // 更新状态标签
+    m_driverStatusLabel->setText("未连接");
+    m_driverStatusLabel->setStyleSheet("QLabel { color: red; }");
+    
     ToastMessage *toast = new ToastMessage("驱动已断开连接", this);
     toast->showToast(1000);
 }
 
 void MainWindow::onDriverSerialError(const QString &error)
 {
+    // 恢复按钮状态
+    m_driverConnectBtn->setEnabled(true);
+    m_driverConnectBtn->setChecked(false);
+    m_driverConnectBtn->setText("连接");
+    
     LOG_ERROR("驱动串口错误: " + error);
     ToastMessage *toast = new ToastMessage("驱动错误: " + error, this);
     toast->showToast(1000);
-    updateConnectionStatus();
+}
+
+// 添加新的辅助方法实现
+MainWindow::DriverChannelType MainWindow::parseDriverType(const QString &type) {
+    // 移除 "CH" 后缀，只保留数字
+    QString numStr = type;
+    numStr.remove("CH", Qt::CaseInsensitive);
+    
+    bool ok;
+    int channels = numStr.toInt(&ok);
+    if (!ok) return DriverChannelType::Unknown;
+    
+    switch (channels) {
+        case 1: return DriverChannelType::CH1;
+        case 2: return DriverChannelType::CH2;
+        case 4: return DriverChannelType::CH4;
+        case 5: return DriverChannelType::CH5;
+        case 6: return DriverChannelType::CH6;
+        case 8: return DriverChannelType::CH8;
+        case 10: return DriverChannelType::CH10;
+        case 20: return DriverChannelType::CH20;
+        default: return DriverChannelType::Unknown;
+    }
+}
+
+int MainWindow::getChannelCount(DriverChannelType type) {
+    return static_cast<int>(type);
 }

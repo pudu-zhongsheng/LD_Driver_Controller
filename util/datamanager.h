@@ -47,7 +47,7 @@ class DataManager : public QObject
     Q_OBJECT
 public:
     static DataManager* instance();
-
+    
     // 数据操作
     void addMeasurement(const MeasurementData &data);
     void clearData();

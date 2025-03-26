@@ -1,121 +1,56 @@
 #ifndef CL_TWOZEROZEROACOM_H
 #define CL_TWOZEROZEROACOM_H
 
-#include "protocol.h"
-#include <QDateTime>
-#include <chrono>
-#include <cmath>
+#include <QWidget>
 
-class CL_TwoZeroZeroACOM : public Protocol
+class CL_TwoZeroZeroACOM : public QWidget
 {
     Q_OBJECT
 public:
-    explicit CL_TwoZeroZeroACOM(QObject *parent = nullptr);
+    explicit CL_TwoZeroZeroACOM(QWidget *parent = nullptr);
 
-    // 实现基本命令接口
-    QByteArray makeReadCommand(int address, int count = 1) override;
-    QByteArray makeWriteCommand(int address, const QByteArray &data) override;
-    bool parseResponse(const QByteArray &response, QByteArray &data) override;
-
-    // 数据结构定义
-    struct MeasurementData {
-        QString registerCode;   // 功能码
-        char fixedValue;       // 固定值
-        char err;             // 错误信息
-        char rng;             // 范围状态
-        char ba;              // 电池电量
-        float data1;          // 测量值1
-        float data2;          // 测量值2
-        float data3;          // 测量值3
-        std::chrono::system_clock::time_point time;
+    
+    // 结构体，存放解析接收数据的结果（长报文，读取测量状态和数据）
+    struct MeasurementData{
+        QString registerCode;   // Long功能码01、02、03、08、15 Special功能码45、47
+        char fixedValue;    // 固定值 1or5 正常运行    （47 0or1 正常运行）
+        char err;           // 错误信息 " "、"4"：正常运行；"1"-"3"：重启cl-200a；"5"：超过误差的测量值（请降低亮度或拉远光源距离）（47中5是正常）;、"6"、"7"可能是正常，也可能是异常
+        char rng;           // 范围状态 "0"：发送命令和响应的周期可能不正确，请设置正确的等待时间；"1"-"4"：正常；"6"：测量结果超出范围，请执行EXT模式；（47中固定为20h）
+        char ba;            // 电池电量 "0"正常，"1"电量不足；（47中固定为20h）
+        float data1;      // 测量值
+        float data2;      // 测量值
+        float data3;      // 测量值
+    };
+    // 结构体，存放短报文指令响应结果
+    struct ShortMeasurementData{
+        QString registerCode;   // 功能码40、48、54
+        // 错误信息 " "：正常运行；"1"-"3"：重启cl-200a；"4"：请先发送55指令设置为保持状态；"5"-"7"：表示之前测量数据异常，但是不影响本操作；
+        // 48中"4"是设置数值超出范围，54中所有参数都是固定
+        char err;
     };
 
-    // 照度计特定命令
-    QByteArray makeHoldCommand(bool hold);          // HOLD功能
-    QByteArray makeBacklightCommand(bool on);       // 背光控制
-    QByteArray makeRangeCommand(int range);         // 量程切换
-    QByteArray makeQueryCommand();                  // 数据查询
-    QByteArray makeMaxMinCommand(const QString &mode); // 最大最小值模式
-    QByteArray makePeakHoldCommand(bool on);        // 峰值保持
-    QByteArray makeRelativeCommand(bool on);        // 相对值测量
-    QByteArray makeEXTCommand(bool on);             // EXT模式
-    QByteArray makePCConnectCommand();              // PC连接模式
-    QByteArray makeCalibrationCommand(int row, const QString &data1,
-                                    const QString &data2, const QString &data3); // 校准系数设置
+    static QString calculateBCC(const QByteArray &data);    // 计算校验位
 
-    // 数据解析
-    bool parseMeasurementData(const QByteArray &data, MeasurementData &result);
-    float parseDataBlock(const QByteArray &block);
+    ShortMeasurementData handleReceivedSettingResult(const QByteArray &data);   // Short通讯模式，获取设置指令的响应结果
+    MeasurementData handleReceivedMeasurementData(const QByteArray &data);  // Long通讯模式，处理接收到的测量数据
+    MeasurementData handleReceivedMeasurementDataSpecial(const QByteArray &data);  // special通讯模式，处理接收到的测量数据
+    float parseLongDataBlock(const QByteArray &block);   // 解析长报文的数据块
+    QByteArray createSpecialFormatMessage(float value1, float value2, float value3);    // 封装特殊报文
+    float parseSpecialDataBlock(const QByteArray &block);   // 解析特殊报文的数据块
 
-private:
-    static constexpr char STX = 0x02;      // 起始字符
-    static constexpr char ETX = 0x03;      // 结束字符
-    static constexpr char CR = 0x0D;       // 回车符
-    static constexpr char LF = 0x0A;       // 换行符
+    QByteArray createMessage(const QByteArray &data);   // 封装数据报文
 
-    // 命令代码
-    static constexpr char CMD_QUERY = 'D';      // 数据查询
-    static constexpr char CMD_HOLD = 'H';       // HOLD功能
-    static constexpr char CMD_BACKLIGHT = 'L';  // 背光控制
-    static constexpr char CMD_RANGE = 'R';      // 量程切换
-    static constexpr char CMD_MAXMIN = 'M';     // 最大最小值
-    static constexpr char CMD_PEAK = 'P';       // 峰值保持
-    static constexpr char CMD_RELATIVE = 'V';   // 相对值测量
-
-    // 辅助函数
-    QByteArray makeCommand(char cmd, const QString &param = QString());
-    bool verifyChecksum(const QByteArray &response);
-    QByteArray calculateChecksum(const QByteArray &data);
-    QByteArray createMessage(const QByteArray &data);
-
-    // 错误代码定义
-    enum ErrorCode {
-        NoError = 0,
-        InvalidResponse = 1,
-        ChecksumError = 2,
-        DataFormatError = 3,
-        ValueRangeError = 4,
-        DeviceError = 5
-    };
-
-    // 辅助方法
-    bool validateResponse(const QByteArray &response);
-    QString getErrorString(char errorCode);
-    bool isValidRange(int range) const;
-    void handleDeviceError(char errorCode);
+    // 01读取测量数据(x,y,z);02读取测量数据(EV,x,y);03读取测量数据(EV,u',v')
+    // 08读取测量数据(EV,Tcp,Δuv);15读取测量数据(EV,DW,P);
+    // 45读取测量数据(x2,y,z) 不确定用短报文还是特殊报文？
+    QByteArray readMeasure(const QString &registCode, quint8 header, char CFable, char calibrationMode);
+    QByteArray setEXT40(quint8 header);        // 设置EXT模式（有应答）
+    QByteArray takeEXT40();                    // 进行EXT测量（无应答）
+    QByteArray readCalibrationFactor47(quint8 header, char MCF); // 读取用户校准系数
+    QByteArray setCalibrationFactor48(quint8 header, char MCF, const QString &data1, const QString &data2,
+                                      const QString &data3);  // 写入用户校准系数，data是8个字符(0-F)的字符串
+    QByteArray setPCConnect54();    // 设置PC连接模式
+    QByteArray setHoldState55();    // 设置保持状态（无应答）
 };
 
 #endif // CL_TWOZEROZEROACOM_H
-
-/**
- * 使用示例
-
- // 创建实例
-auto *meter = new CL_TwoZeroZeroACOM(this);
-
-// 设置量程
-QByteArray cmd = meter->makeRangeCommand(2);
-serialPort->write(cmd);
-
-// 打开背光
-cmd = meter->makeBacklightCommand(true);
-serialPort->write(cmd);
-
-// 查询数据
-cmd = meter->makeQueryCommand();
-serialPort->write(cmd);
-
-// 处理响应
-connect(serialPort, &QSerialPort::readyRead, this, [=]() {
-    QByteArray response = serialPort->readAll();
-    QByteArray data;
-    if (meter->parseResponse(response, data)) {
-        CL_TwoZeroZeroACOM::MeterStatus status;
-        if (meter->parseStatus(data, status)) {
-            qDebug() << "照度:" << status.illuminance
-                     << "色温:" << status.colorTemp
-                     << "RGB:" << status.red << status.green << status.blue;
-        }
-    }
-});
- */

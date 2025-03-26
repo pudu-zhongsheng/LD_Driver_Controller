@@ -12,25 +12,34 @@ DriverGeneral::DriverGeneral(QObject *parent)
 
 QByteArray DriverGeneral::makeCommand(quint8 commandLength, quint8 actionCategory,
                                           quint8 sendAddress, quint8 receiveAddress,
-                                          quint8 actionAddress, QByteArray data)
+                                          quint8 actionAddress, const QByteArray &data)
 {
     // 构造命令数据
     QByteArray sendData;
-    // 序列化数据
-    QDataStream stream(&sendData, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::BigEndian);    // 设置数据流为大端序
-    stream << qToBigEndian(static_cast<quint16>(STX));
-    stream << commandLength;
-    stream << actionCategory;
-    stream << sendAddress;
-    stream << receiveAddress;
-    stream << actionAddress;
+    
+    // 添加STX (大端序)
+    sendData.append(static_cast<char>((STX >> 8) & 0xFF));  // 高字节
+    sendData.append(static_cast<char>(STX & 0xFF));        // 低字节
+    
+    // 添加命令长度和其他字段
+    sendData.append(static_cast<char>(commandLength));
+    sendData.append(static_cast<char>(actionCategory));
+    sendData.append(static_cast<char>(sendAddress));
+    sendData.append(static_cast<char>(receiveAddress));
+    sendData.append(static_cast<char>(actionAddress));
+    
+    // 添加数据部分
     if(!data.isEmpty()){
-        stream.writeRawData(data.constData(),data.size());
+        sendData.append(data);
     }
-    // 计算并添加校验位
+    
+    // 计算CRC校验
     quint16 crcCode = calculateCRC16(sendData.mid(2));
-    stream << qToBigEndian(static_cast<quint16>(crcCode));
+    
+    // 添加CRC (大端序)
+    sendData.append(static_cast<char>((crcCode >> 8) & 0xFF));  // 高字节
+    sendData.append(static_cast<char>(crcCode & 0xFF));        // 低字节
+    
     qDebug() << "Send driverGeneral data is : " << sendData.toHex();
     return sendData;
 }
@@ -38,21 +47,24 @@ QByteArray DriverGeneral::makeCommand(quint8 commandLength, quint8 actionCategor
 QByteArray DriverGeneral::connectInit(quint8 sendAddress, quint8 receiveAddress)
 {
     QByteArray data;
-    data.append(static_cast<quint16>(0x0002));
+    data.append(static_cast<char>(0x00));
+    data.append(static_cast<char>(0x02));
     return makeCommand(0x06,0x81,sendAddress,receiveAddress,0x08,data);
 }
 
 QByteArray DriverGeneral::readTemperature(quint8 sendAddress, quint8 receiveAddress)
 {
     QByteArray data;
-    data.append(static_cast<quint16>(0x0002));
+    data.append(static_cast<char>(0x00));
+    data.append(static_cast<char>(0x02));
     return makeCommand(0x06,0x81,sendAddress,receiveAddress,0x1C,data);
 }
 
 QByteArray DriverGeneral::readLEDOnOff(quint8 sendAddress, quint8 receiveAddress)
 {
     QByteArray data;
-    data.append(static_cast<quint16>(0x0002));
+    data.append(static_cast<char>(0x00));
+    data.append(static_cast<char>(0x02));
     return makeCommand(0x06,0x81,sendAddress,receiveAddress,0x24,data);
 }
 
@@ -68,21 +80,24 @@ QByteArray DriverGeneral::readLEDStrength(quint8 sendAddress, quint8 receiveAddr
 QByteArray DriverGeneral::readLEDModel(quint8 sendAddress, quint8 receiveAddress)
 {
     QByteArray data;
-    data.append(static_cast<quint16>(0x0002));
+    data.append(static_cast<char>(0x00));
+    data.append(static_cast<char>(0x02));
     return makeCommand(0x06,0x81,sendAddress,receiveAddress,0x50,data);
 }
 
 QByteArray DriverGeneral::readLEDWorkTime(quint8 sendAddress, quint8 receiveAddress)
 {
     QByteArray data;
-    data.append(static_cast<quint16>(0x0004));
+    data.append(static_cast<char>(0x00));
+    data.append(static_cast<char>(0x04));
     return makeCommand(0x06,0x81,sendAddress,receiveAddress,0x52,data);
 }
 
 QByteArray DriverGeneral::readVoltageCurrent(quint8 sendAddress, quint8 receiveAddress)
 {
     QByteArray data;
-    data.append(static_cast<quint16>(0x0002));
+    data.append(static_cast<char>(0x00));
+    data.append(static_cast<char>(0x02));
     return makeCommand(0x06,0x81,sendAddress,receiveAddress,0x56,data);
 }
 
@@ -98,8 +113,11 @@ QByteArray DriverGeneral::writeLEDOnOff(quint8 sendAddress, quint8 receiveAddres
                                         quint16 LEDStatus)
 {
     QByteArray data;
-    data.append(static_cast<quint16>(LEDStatus));
-    return makeCommand(0x06,0x80,sendAddress,receiveAddress,0x24,data);
+    // 添加2字节值(大端序)
+    data.append(static_cast<char>((LEDStatus >> 8) & 0xFF));  // 高字节
+    data.append(static_cast<char>(LEDStatus & 0xFF));        // 低字节
+    
+    return makeCommand(0x06, 0x80, sendAddress, receiveAddress, 0x24, data);
 }
 
 QByteArray DriverGeneral::writeLEDStrength(quint8 sendAddress, quint8 receiveAddress,
@@ -110,41 +128,62 @@ QByteArray DriverGeneral::writeLEDStrength(quint8 sendAddress, quint8 receiveAdd
     quint8 conLength = 4 + 2 + valuedata.size();
     data.append(startRegister);
     data.append(registerCount);
-    data.append(valuedata);
-    return makeCommand(conLength,0x80,sendAddress,receiveAddress,0x26,data);
+    data.append(valuedata);  // 确保valuedata中的值已经是大端序
+    return makeCommand(conLength, 0x80, sendAddress, receiveAddress, 0x26, data);
 }
 
 QByteArray DriverGeneral::writeLEDModel(quint8 sendAddress, quint8 receiveAddress,
                                         quint16 LEDModel)
 {
     QByteArray data;
-    data.append(static_cast<quint16>(LEDModel));
-    return makeCommand(0x06,0x80,sendAddress,receiveAddress,0x50,data);
+    // 添加2字节值(大端序)
+    data.append(static_cast<char>((LEDModel >> 8) & 0xFF));  // 高字节
+    data.append(static_cast<char>(LEDModel & 0xFF));        // 低字节
+    
+    return makeCommand(0x06, 0x80, sendAddress, receiveAddress, 0x50, data);
 }
 
 QByteArray DriverGeneral::writeLEDWorkTime(quint8 sendAddress, quint8 receiveAddress,
                                            quint32 LEDWorkTime)
 {
     QByteArray data;
-    data.append(static_cast<quint32>(LEDWorkTime));
-    return makeCommand(0x08,0x80,sendAddress,receiveAddress,0x52,data);
+    // 添加四字节值，确保大端序
+    data.append(static_cast<char>((LEDWorkTime >> 24) & 0xFF));  // 最高字节
+    data.append(static_cast<char>((LEDWorkTime >> 16) & 0xFF));
+    data.append(static_cast<char>((LEDWorkTime >> 8) & 0xFF));
+    data.append(static_cast<char>(LEDWorkTime & 0xFF));         // 最低字节
+    
+    return makeCommand(0x08, 0x80, sendAddress, receiveAddress, 0x52, data);
 }
 
 QByteArray DriverGeneral::writeLimitVoltageCurrent(quint8 sendAddress, quint8 receiveAddress,
                                                    quint32 MaxVoltage, quint32 MaxCurrent)
 {
     QByteArray data;
-    data.append(static_cast<quint32>(MaxVoltage));
-    data.append(static_cast<quint32>(MaxCurrent));
-    return makeCommand(0x0C,0x80,sendAddress,receiveAddress,0x5E,data);
+    // 添加电压值(大端序)
+    data.append(static_cast<char>((MaxVoltage >> 24) & 0xFF));  // 最高字节
+    data.append(static_cast<char>((MaxVoltage >> 16) & 0xFF));
+    data.append(static_cast<char>((MaxVoltage >> 8) & 0xFF));
+    data.append(static_cast<char>(MaxVoltage & 0xFF));         // 最低字节
+    
+    // 添加电流值(大端序)
+    data.append(static_cast<char>((MaxCurrent >> 24) & 0xFF));  // 最高字节
+    data.append(static_cast<char>((MaxCurrent >> 16) & 0xFF));
+    data.append(static_cast<char>((MaxCurrent >> 8) & 0xFF));
+    data.append(static_cast<char>(MaxCurrent & 0xFF));         // 最低字节
+    
+    return makeCommand(0x0C, 0x80, sendAddress, receiveAddress, 0x5E, data);
 }
 
 QByteArray DriverGeneral::writeClearAlarm(quint8 sendAddress, quint8 receiveAddress)
 {
     QByteArray data;
     quint16 clearSign = 0xFFFF;
-    data.append(static_cast<quint16>(clearSign));
-    return makeCommand(0x06,0x80,sendAddress,receiveAddress,0x60,data);
+    // 添加2字节值(大端序)
+    data.append(static_cast<char>((clearSign >> 8) & 0xFF));  // 高字节
+    data.append(static_cast<char>(clearSign & 0xFF));        // 低字节
+    
+    return makeCommand(0x06, 0x80, sendAddress, receiveAddress, 0x60, data);
 }
 
 DriverGeneral::ValidAction DriverGeneral::parseValidction(quint16 actionCode)

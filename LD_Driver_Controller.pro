@@ -8,7 +8,6 @@ RC_ICONS=logo/LD_Control.ico
 
 SOURCES += \
     communication/drivergeneral.cpp \
-    devices/driver/driver1ch/driver1ch.cpp \
     main.cpp \
     mainwindow.cpp \
     communication/driverprotocol.cpp \
@@ -33,12 +32,12 @@ SOURCES += \
     util/config.cpp \
     util/datamanager.cpp \
     util/errorhandler.cpp \
-    util/logger.cpp
+    util/logger.cpp \
+    chart/chartwidget.cpp
 
 
 HEADERS += \
     communication/drivergeneral.h \
-    devices/driver/driver1ch/driver1ch.h \
     mainwindow.h \
     communication/driverprotocol.h \
     communication/eleload_itplus.h \
@@ -63,7 +62,8 @@ HEADERS += \
     util/logger.h \
     util/ToastMessage.h \
     devices/load/load_base.h \
-    devices/load/it8512plus/it8512plus_widget.h
+    devices/load/it8512plus/it8512plus_widget.h \
+    chart/chartwidget.h
     
 
 FORMS += \

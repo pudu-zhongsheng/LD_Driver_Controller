@@ -49,7 +49,7 @@ public:
     // 命令生成
     QByteArray makeCommand(quint8 commandLength, quint8 actionCategory,
                                quint8 sendAddress, quint8 receiveAddress,
-                               quint8 actionAddress, QByteArray data);
+                               quint8 actionAddress, const QByteArray &data);
 
     // 读指令
     QByteArray connectInit(quint8 sendAddress, quint8 receiveAddress);   // 0x08

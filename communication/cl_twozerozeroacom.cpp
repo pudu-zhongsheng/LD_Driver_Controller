@@ -1,317 +1,362 @@
 #include "cl_twozerozeroacom.h"
-#include <QDataStream>
+#include <QDebug>
+#include <cmath>
 
-CL_TwoZeroZeroACOM::CL_TwoZeroZeroACOM(QObject *parent) : Protocol(parent)
+CL_TwoZeroZeroACOM::CL_TwoZeroZeroACOM(QWidget *parent) 
+    : QWidget(parent)
+{}
+
+// Short通讯模式，获取设置指令的响应结果
+CL_TwoZeroZeroACOM::ShortMeasurementData CL_TwoZeroZeroACOM::handleReceivedSettingResult(const QByteArray &data)
 {
+    ShortMeasurementData receivedData;
+    receivedData.registerCode = data.mid(3,2);
+    receivedData.err = data.at(6);
+
+    return receivedData;
 }
 
-QByteArray CL_TwoZeroZeroACOM::makeReadCommand(int address, int count)
+// Long通讯模式，处理接收到的数据
+CL_TwoZeroZeroACOM::MeasurementData CL_TwoZeroZeroACOM::handleReceivedMeasurementData(const QByteArray &data)
 {
-    Q_UNUSED(address)
-    Q_UNUSED(count)
-    // 照度计使用特定命令而不是地址读取
-    return makeQueryCommand();
+    MeasurementData receivedData;
+    receivedData.registerCode = data.mid(3,2);
+    receivedData.fixedValue = data.at(5);
+    receivedData.err = data.at(6);
+    receivedData.rng = data.at(7);
+    receivedData.ba = data.at(8);
+    receivedData.data1 = parseLongDataBlock(data.mid(9,6));
+    receivedData.data2 = parseLongDataBlock(data.mid(15,6));
+    receivedData.data3 = parseLongDataBlock(data.mid(21,6));
+
+    return receivedData;
 }
 
-QByteArray CL_TwoZeroZeroACOM::makeWriteCommand(int address, const QByteArray &data)
+// special通讯模式，处理接收到的测量数据
+CL_TwoZeroZeroACOM::MeasurementData CL_TwoZeroZeroACOM::handleReceivedMeasurementDataSpecial(const QByteArray &data)
 {
-    Q_UNUSED(address)
-    Q_UNUSED(data)
-    // 照度计使用特定命令而不是地址写入
-    return QByteArray();
+    MeasurementData receivedData;
+    receivedData.registerCode = data.mid(3,2);
+    receivedData.fixedValue = data.at(5);
+    receivedData.err = data.at(6);
+    receivedData.rng = data.at(7);
+    receivedData.ba = data.at(8);
+    receivedData.data1 = parseSpecialDataBlock(data.mid(9,8));
+    receivedData.data2 = parseSpecialDataBlock(data.mid(17,8));
+    receivedData.data3 = parseSpecialDataBlock(data.mid(25,8));
+
+    return receivedData;
 }
 
-QByteArray CL_TwoZeroZeroACOM::makeCommand(char cmd, const QString &param)
+// 解析长报文的数据块
+float CL_TwoZeroZeroACOM::parseLongDataBlock(const QByteArray &block)
 {
-    QByteArray data;
-    data.append(STX);
-    data.append(cmd);
-    if (!param.isEmpty()) {
-        data.append(param.toUtf8());
-    }
-    data.append(ETX);
-    
-    // 添加校验和
-    data.append(calculateChecksum(data));
-    
-    // 添加结束符
-    data.append(CR);
-    data.append(LF);
-    
-    return data;
-}
-
-QByteArray CL_TwoZeroZeroACOM::makeHoldCommand(bool hold)
-{
-    return makeCommand(CMD_HOLD, hold ? "1" : "0");
-}
-
-QByteArray CL_TwoZeroZeroACOM::makeBacklightCommand(bool on)
-{
-    return makeCommand(CMD_BACKLIGHT, on ? "1" : "0");
-}
-
-QByteArray CL_TwoZeroZeroACOM::makeRangeCommand(int range)
-{
-    if (range < 0 || range > 4) {
-        emit error("无效的量程设置");
-        return QByteArray();
-    }
-    return makeCommand(CMD_RANGE, QString::number(range));
-}
-
-QByteArray CL_TwoZeroZeroACOM::makeQueryCommand()
-{
-    return makeCommand(CMD_QUERY);
-}
-
-QByteArray CL_TwoZeroZeroACOM::makeMaxMinCommand(const QString &mode)
-{
-    if (mode != "MAX" && mode != "MIN" && mode != "OFF") {
-        emit error("无效的最大最小值模式");
-        return QByteArray();
-    }
-    QString param = mode == "MAX" ? "1" : (mode == "MIN" ? "2" : "0");
-    return makeCommand(CMD_MAXMIN, param);
-}
-
-QByteArray CL_TwoZeroZeroACOM::makePeakHoldCommand(bool on)
-{
-    return makeCommand(CMD_PEAK, on ? "1" : "0");
-}
-
-QByteArray CL_TwoZeroZeroACOM::makeRelativeCommand(bool on)
-{
-    return makeCommand(CMD_RELATIVE, on ? "1" : "0");
-}
-
-QByteArray CL_TwoZeroZeroACOM::makeEXTCommand(bool on)
-{
-    QByteArray data;
-    if (on) {
-        // 设置EXT模式
-        data.append("00");  // receptor head
-        data.append("40"); // 功能码
-        data.append("1020"); // 参数
-    } else {
-        // 执行EXT测量
-        data.append("99");  // receptor head
-        data.append("40"); // 功能码
-        data.append("2120"); // 参数
-    }
-    return createMessage(data);
-}
-
-QByteArray CL_TwoZeroZeroACOM::makePCConnectCommand()
-{
-    QByteArray data;
-    data.append("00");  // receptor head
-    data.append("54"); // 功能码
-    data.append("1"); // 参数
-    data.append("   "); // 空格填充
-    return createMessage(data);
-}
-
-QByteArray CL_TwoZeroZeroACOM::makeCalibrationCommand(int row, const QString &data1,
-                                                     const QString &data2, const QString &data3)
-{
-    if (row < 1 || row > 3) {
-        emit error("校准系数行号无效");
-        return QByteArray();
-    }
-
-    QByteArray data;
-    data.append("00");  // receptor head
-    data.append("48"); // 功能码
-    data.append('0' + row); // 矩阵行号
-    data.append("1  "); // 参数
-    data.append(data1.toUtf8());
-    data.append(data2.toUtf8());
-    data.append(data3.toUtf8());
-    
-    return createMessage(data);
-}
-
-bool CL_TwoZeroZeroACOM::parseResponse(const QByteArray &response, QByteArray &data)
-{
-    // 检查最小长度
-    if (response.size() < 6) {  // STX(1) + CMD(1) + DATA(1+) + ETX(1) + CHK(1) + CR(1)
-        emit error("响应数据长度错误");
-        return false;
-    }
-
-    // 检查起始和结束字符
-    if (response[0] != STX || response[response.size()-2] != CR || 
-        response[response.size()-1] != LF) {
-        emit error("响应数据格式错误");
-        return false;
-    }
-
-    // 检查校验和
-    if (!verifyChecksum(response)) {
-        emit error("校验和错误");
-        return false;
-    }
-
-    // 提取数据部分（不包括STX、ETX、校验和和结束符）
-    data = response.mid(2, response.size() - 6);
-    return true;
-}
-
-bool CL_TwoZeroZeroACOM::parseMeasurementData(const QByteArray &data, MeasurementData &result)
-{
-    if (data.size() < 8) {
-        emit error("测量数据长度错误");
-        return false;
-    }
-
-    result.registerCode = data.mid(0, 2);
-    result.fixedValue = data[2];
-    result.err = data[3];
-    result.rng = data[4];
-    result.ba = data[5];
-
-    // 处理设备错误
-    if (result.err != ' ' && result.err != '0') {
-        handleDeviceError(result.err);
-        if (result.err >= '1' && result.err <= '3') {
-            return false;
-        }
-    }
-
-    // 检查电池状态
-    if (result.ba == '1') {
-        emit error("设备电池电量不足");
-    }
-
-    // 解析三个数据块
-    QByteArray block1 = data.mid(6, 6);
-    QByteArray block2 = data.mid(12, 6);
-    QByteArray block3 = data.mid(18, 6);
-
-    result.data1 = parseDataBlock(block1);
-    result.data2 = parseDataBlock(block2);
-    result.data3 = parseDataBlock(block3);
-    
-    result.time = std::chrono::system_clock::now();
-
-    return true;
-}
-
-float CL_TwoZeroZeroACOM::parseDataBlock(const QByteArray &block)
-{
-    if (block.size() != 6) return 0.0f;
+    if(block.size() != 6) return 0.0f;  // 确保数据块长度正确
 
     // 解析符号
-    char signChar = block[0];
+    char signChar = block.at(0);
     int sign = (signChar == '-') ? -1 : 1;
 
     // 解析有效数据
-    QString valueStr = block.mid(1, 4).trimmed();
+    QString valueStr = block.mid(1,4).trimmed();    // 提取并去除空格
     float value = valueStr.toFloat();
 
     // 解析指数并计算结果
-    char exponentChar = block[5];
-    int exponent = exponentChar - '0';
-    float multiplier = std::pow(10, exponent - 4);
+    char exponentChar = block.at(5);
+    int exponent = exponentChar - '0';   // 转换为0-9的整数
+    float multiplier = std::pow(10,exponent - 4);   // 10的(exponent - 4)次方
 
     return sign * value * multiplier;
 }
 
-QByteArray CL_TwoZeroZeroACOM::createMessage(const QByteArray &data)
+// 封装特殊报文
+QByteArray createSpecialFormatMessage(float value1, float value2, float value3)
 {
     QByteArray message;
-    message.append(STX);
-    message.append(data);
-    message.append(ETX);
+    message.append(0x02);   // STX
 
-    // 计算并添加校验和
-    QByteArray dataToXOR = message;
-    message.append(calculateChecksum(dataToXOR));
+    // 将每个浮点值转化为8字节的ASCII字符表示
+    auto floatToAscii = [](float val) -> QByteArray {
+        union{
+            float f;
+            uint32_t i;
+        } converter;
+        converter.f = val;
+        QByteArray result;
+        result.append(QString::number((converter.i >> 31) & 0x1, 16).toUpper().toLatin1()); // 符号位
+        result.append(QString::number((converter.i >> 23) & 0xFF, 16).rightJustified(2,'0').toUpper().toLatin1());  // 指数
+        result.append(QString::number(converter.i & 0x7FFFFF, 16).rightJustified(6,'0').toUpper().toLatin1());    // 尾数
+        return  result;
+    };
 
-    // 添加结束符
-    message.append(CR);
-    message.append(LF);
+    message.append(floatToAscii(value1));
+    message.append(floatToAscii(value2));
+    message.append(floatToAscii(value3));
 
     return message;
 }
 
-QByteArray CL_TwoZeroZeroACOM::calculateChecksum(const QByteArray &data)
+// 解析特殊报文的数据块
+float CL_TwoZeroZeroACOM::parseSpecialDataBlock(const QByteArray &block)
 {
-    // 计算校验和：从STX到ETX的所有字节的异或值
-    char checksum = 0;
-    for (char byte : data) {
-        checksum ^= byte;
-    }
-    return QByteArray(1, checksum);
+    if(block.size() != 8) return 0.0f;
+
+    // 符号位
+    int sign = (block[0] == '1') ? -1 : 1;
+
+    // 指数部分（第2、3位）
+    int exponent = block.mid(1,2).toInt(nullptr,16);
+
+    // 尾数部分（第4-8位）
+    int mantissa = block.mid(3,5).toInt(nullptr,16);
+
+    // 构建浮点数
+    float result = sign * mantissa * std::pow(2,exponent -127); // 2的(exponent - 127)次方
+    return  result;
 }
 
-bool CL_TwoZeroZeroACOM::verifyChecksum(const QByteArray &response)
+// 封装数据报文
+QByteArray CL_TwoZeroZeroACOM::createMessage(const QByteArray &data)
 {
-    // 提取数据部分（包括STX到ETX）
-    QByteArray data = response.left(response.size() - 3);
-    // 提取校验和
-    char receivedChecksum = response[response.size() - 3];
-    // 计算校验和
-    char calculatedChecksum = calculateChecksum(data)[0];
-    
-    return receivedChecksum == calculatedChecksum;
+    QByteArray sendData;
+    // 序列化数据
+
+    QDataStream stream(&sendData, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::BigEndian);    // 设置数据流为大端序
+
+    // STX 固定02h
+    stream << quint8(0x02);
+
+    // 数据
+    stream.writeRawData(data.constData(),data.size());
+
+    // ETX 固定03h
+    stream << quint8(0x03);
+
+    // BBC校验
+    QByteArray dataToXOR;
+    dataToXOR.append(data);
+    dataToXOR.append(0x03);
+    QString bcc = calculateBCC(dataToXOR);
+//    qDebug() << "bccbccbccbccbccbccbcc:" << bcc.toUtf8().toHex();
+    stream << quint8(bcc.toUtf8().at(0));
+    stream << quint8(bcc.toUtf8().at(1));
+
+    // 结尾CRLF
+    stream << quint8(0x0D);
+    stream << quint8(0x0A);
+
+    qDebug() << "发送的报文为：" << sendData.toHex();
+    return sendData;
 }
 
-bool CL_TwoZeroZeroACOM::validateResponse(const QByteArray &response)
+// 计算校验位
+QString CL_TwoZeroZeroACOM::calculateBCC(const QByteArray &data)
 {
-    if (response.size() < 6) {
-        emit error("响应数据长度不足");
-        return false;
+    quint8 bcc = 0;
+
+    // 对QByteArray中的每个字节进行异或操作
+    for(char byte : data){
+        bcc ^= static_cast<quint8>(byte);
     }
 
-    if (response[0] != STX) {
-        emit error("无效的起始字符");
-        return false;
-    }
+    // 提取高低4位
+    char highNibble = (bcc >> 4) < 10 ? (bcc >> 4) + '0' : (bcc >> 4) - 10 + 'A';
+    char lowNibble = (bcc & 0x0F) < 10 ? (bcc & 0x0F) + '0' : (bcc & 0x0F) - 10 + 'A';
 
-    if (response[response.size()-2] != CR || response[response.size()-1] != LF) {
-        emit error("无效的结束字符");
-        return false;
-    }
+    QString bccResult;
+    bccResult.append(highNibble);
+    bccResult.append(lowNibble);
 
-    return true;
+    return bccResult;
 }
 
-QString CL_TwoZeroZeroACOM::getErrorString(char errorCode)
+// 读取测量数据
+QByteArray CL_TwoZeroZeroACOM::readMeasure(const QString &registCode, quint8 header, char CFable, char calibrationMode)
 {
-    switch (errorCode) {
-        case '0':
-        case ' ':
-            return "正常";
-        case '1':
-        case '2':
-        case '3':
-            return "设备需要重启";
-        case '4':
-            return "请先设置为保持状态";
-        case '5':
-            return "测量值超出范围";
-        case '6':
-        case '7':
-            return "可能存在异常";
-        default:
-            return "未知错误";
-    }
+    QByteArray data;
+
+    // header受体头“00”到“29”
+    // 分别取到header的高低4位
+    char highNibble = (header >> 4) < 10 ? (header >> 4) + '0' : (header >> 4) - 10 + 'A';
+    char lowNibble = (header & 0x0F) < 10 ? (header & 0x0F) + '0' : (header & 0x0F) - 10 + 'A';
+
+    // receptor head
+    data.append(highNibble);
+    data.append(lowNibble);
+
+    // 功能码
+    data.append(registCode.at(0));
+    data.append(registCode.at(1));
+
+    // 参数
+    data.append(0x31);
+    data.append(CFable);    // CF函数启用状态，2禁用，3启用
+    data.append(0x30);
+    data.append(calibrationMode);   // 校准模式，0规范，1多
+
+    QByteArray sendData = createMessage(data);
+
+    return sendData;
 }
 
-bool CL_TwoZeroZeroACOM::isValidRange(int range) const
+// 设置EXT模式（有应答）
+QByteArray CL_TwoZeroZeroACOM::setEXT40(quint8 header)
 {
-    return range >= 0 && range <= 4;
+    QByteArray data;
+    char highNibble = (header >> 4) < 10 ? (header >> 4) + '0' : (header >> 4) - 10 + 'A';
+    char lowNibble = (header & 0x0F) < 10 ? (header & 0x0F) + '0' : (header & 0x0F) - 10 + 'A';
+
+    // receptor head
+    data.append(highNibble);
+    data.append(lowNibble);
+
+    // 功能码
+    data.append(0x34);
+    data.append(0x30);
+
+    // 参数
+    data.append(0x31);
+    data.append(0x30);
+    data.append(0x20);
+    data.append(0x20);
+
+    QByteArray sendData = createMessage(data);
+
+    return sendData;
 }
 
-void CL_TwoZeroZeroACOM::handleDeviceError(char errorCode)
+// 进行EXT测量（无应答）
+QByteArray CL_TwoZeroZeroACOM::takeEXT40()
 {
-    QString errorMsg = getErrorString(errorCode);
-    emit error(QString("设备错误: %1").arg(errorMsg));
-    
-    // 对于需要重启的错误，发送特殊信号
-    if (errorCode >= '1' && errorCode <= '3') {
-        emit error("设备需要重启，请重新启动CL-200A");
-    }
+    QByteArray data;
+
+    // receptor head
+    data.append(0x39);
+    data.append(0x39);
+
+    // 功能码
+    data.append(0x34);
+    data.append(0x30);
+
+    // 参数
+    data.append(0x32);
+    data.append(0x31);
+    data.append(0x20);
+    data.append(0x20);
+
+    QByteArray sendData = createMessage(data);
+
+    return sendData;
+}
+
+// 读取用户校准系数
+QByteArray CL_TwoZeroZeroACOM::readCalibrationFactor47(quint8 header, char MCF)
+{
+    QByteArray data;
+    char highNibble = (header >> 4) < 10 ? (header >> 4) + '0' : (header >> 4) - 10 + 'A';
+    char lowNibble = (header & 0x0F) < 10 ? (header & 0x0F) + '0' : (header & 0x0F) - 10 + 'A';
+
+    // receptor head
+    data.append(highNibble);
+    data.append(lowNibble);
+
+    // 功能码
+    data.append(0x34);
+    data.append(0x37);
+
+    // 用户校准系数矩阵行号1-3
+    // 第一行：A11 A12 A13；第二行：A21 A22 A23；第三行：A31 A32 A33；
+    data.append(MCF);
+
+    // 参数
+    data.append(0x30);
+    data.append(0x20);
+    data.append(0x20);
+
+    QByteArray sendData = createMessage(data);
+
+    return sendData;
+}
+
+// 写入用户校准系数
+QByteArray CL_TwoZeroZeroACOM::setCalibrationFactor48(quint8 header, char MCF,
+                                           const QString &data1,
+                                           const QString &data2,
+                                           const QString &data3)
+{
+    QByteArray data;
+    char highNibble = (header >> 4) < 10 ? (header >> 4) + '0' : (header >> 4) - 10 + 'A';
+    char lowNibble = (header & 0x0F) < 10 ? (header & 0x0F) + '0' : (header & 0x0F) - 10 + 'A';
+
+    // receptor head
+    data.append(highNibble);
+    data.append(lowNibble);
+
+    // 功能码
+    data.append(0x34);
+    data.append(0x38);
+
+    // 用户校准系数矩阵行号1-3
+    // 第一行：A11 A12 A13；第二行：A21 A22 A23；第三行：A31 A32 A33；
+    data.append(MCF);
+
+    // 参数
+    data.append(0x31);
+    data.append(0x20);
+    data.append(0x20);
+
+    data.append(data1.toUtf8());
+    data.append(data2.toUtf8());
+    data.append(data3.toUtf8());
+
+    QByteArray sendData = createMessage(data);
+
+    return sendData;
+}
+
+// 设置PC连接模式
+QByteArray CL_TwoZeroZeroACOM::setPCConnect54()
+{
+    QByteArray data;
+    // receptor head
+    data.append(0x30);
+    data.append(0x30);
+
+    // 功能码
+    data.append(0x35);
+    data.append(0x34);
+
+    // 参数
+    data.append(0x31);
+    data.append(0x20);
+    data.append(0x20);
+    data.append(0x20);
+
+    QByteArray sendData = createMessage(data);
+
+    return sendData;
+}
+
+// 设置保持状态
+QByteArray CL_TwoZeroZeroACOM::setHoldState55()
+{
+    QByteArray data;
+    // receptor head
+    data.append(0x39);
+    data.append(0x39);
+
+    // 功能码
+    data.append(0x35);
+    data.append(0x35);
+
+    // 参数
+    data.append(0x31);
+    data.append(0x20);
+    data.append(0x20);
+    data.append(0x30);
+
+    QByteArray sendData = createMessage(data);
+
+    return sendData;
 }
