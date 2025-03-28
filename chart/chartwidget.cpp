@@ -286,15 +286,19 @@ void ChartWidget::updateChartData(const MeasurementData &data)
     // 更新图表
     qint64 timestamp = data.timestamp.toMSecsSinceEpoch();
     
+    // 添加照度和色温数据点
     m_currentSeries->append(timestamp, data.current);
     m_voltageSeries->append(timestamp, data.voltage);
     m_powerSeries->append(timestamp, data.power);
     m_resistanceSeries->append(timestamp, data.resistance);
-    m_illuminanceSeries->append(timestamp, data.illuminance);
-    m_colorTempSeries->append(timestamp, data.colorTemp);
-    m_rSeries->append(timestamp, data.r);
-    m_gSeries->append(timestamp, data.g);
-    m_bSeries->append(timestamp, data.b);
+    if(data.illuminance != 0){
+        m_illuminanceSeries->append(timestamp, data.illuminance);
+    }
+    if(data.r != 0 && data.g != 0 && data.b != 0){
+        m_rSeries->append(timestamp, data.r);
+        m_gSeries->append(timestamp, data.g);
+        m_bSeries->append(timestamp, data.b);
+    }
 
     // 更新X轴范围（显示最近5分钟的数据）
     auto *axisX = qobject_cast<QDateTimeAxis*>(m_chart->axes(Qt::Horizontal).first());
@@ -316,7 +320,20 @@ void ChartWidget::updateChartData(const MeasurementData &data)
             double maxVoltage = Config::getValue(ConfigKeys::ELOAD_MAX_VOLTAGE, 30.0).toDouble();
             axisY->setRange(0, maxVoltage);
         }
-        // ... 其他图表类型的范围设置
+        else if (chartType == "照度-时间") {
+            // 动态调整照度范围
+            double maxIlluminance = 1000.0;  // 默认值
+            for (const auto &item : m_measurementData) {
+                if (item.illuminance > maxIlluminance) {
+                    maxIlluminance = item.illuminance * 1.1; // 留一些余量
+                }
+            }
+            axisY->setRange(0, maxIlluminance);
+        }
+        else if (chartType == "色温RGB-时间") {
+            // 动态调整RGB范围
+            axisY->setRange(0, 255);
+        }
     }
 
     // 更新数据表格

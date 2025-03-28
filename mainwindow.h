@@ -35,6 +35,8 @@ QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
+class ChartWidget;
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -79,6 +81,7 @@ private:
     QStackedWidget *m_driverArea;    // 驱动控制区域
     QGroupBox *m_connectionGroup;      // 通讯连接状态管理
     QGroupBox *m_loadStatusGroup;      // 电子负载状态
+    QGroupBox *m_illuStatusGroup;      // 照度计状态
     QGroupBox *m_schemeGroup;          // 软件设置方案
     QPushButton *m_backButton;         // 返回按钮
         
@@ -134,6 +137,7 @@ private:
     void createDriverArea();           // 创建驱动控制区域
     void createConnectionArea();       // 创建通讯连接状态管理区域
     void createLoadStatusArea();       // 创建电子负载状态区域
+    void createIlluminometerArea();    // 创建照度计状态区域
     void createSchemeArea();           // 创建软件设置方案区域
     void createChartArea();            // 创建图表区域
     
@@ -145,6 +149,13 @@ private:
     void startDataCollection();
 
     void setupDataManagement();  // 设置数据管理相关UI和连接
+
+    // 在 UI 组件部分添加新成员变量
+    QLabel *m_meterStatusLabel;       // 照度计状态标签
+    QLabel *m_illuminanceValue;       // 照度值显示标签
+    QLabel *m_colorTempValue;         // 色温值显示标签
+    QPushButton *m_measureBtn;        // 测量控制按钮
+    QButtonGroup *m_meterButtonGroup; // 测量模式选择按钮组
 };
 
 #endif // MAINWINDOW_H

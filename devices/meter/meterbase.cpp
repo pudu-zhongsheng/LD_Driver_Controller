@@ -3,5 +3,3 @@
 MeterBase::MeterBase(QWidget *parent)
     : QWidget(parent)
 {}
-
-MeterBase::~MeterBase(){}

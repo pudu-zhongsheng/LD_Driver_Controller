@@ -22,8 +22,17 @@ DataManager* DataManager::instance()
 void DataManager::addMeasurement(const MeasurementData &data)
 {
     m_data.append(data);
-    trimData();
+    
+    // 限制存储的数据量
+    while (m_data.size() > MAX_DATA_POINTS) {
+        m_data.removeFirst();
+    }
+    
+    // 发出数据添加信号
     emit dataAdded(data);
+    
+    // 保存到临时文件
+//    saveToTempFile();
 }
 
 void DataManager::clearData()

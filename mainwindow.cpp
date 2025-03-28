@@ -21,15 +21,15 @@ MainWindow::MainWindow(const QString &driver, const QString &load, const QString
     ui->setupUi(this);
     setWindowTitle("LD Driver Controller");
     
-    // 初始化驱动区域容器
+    // Initializes the driver area container
     m_driverArea = new QStackedWidget(this);
     
-    // 根据选择的型号创建对应的设备对象
+    // Create a device object according to the selected model
     if (m_loadType == "IT8512+") {
         auto *protocol = new EleLoad_ITPlus(0x00, this);
         m_loadWidget = new IT8512Plus_Widget(protocol, this);
         
-        // 连接所有信号
+        // Connect all signals
         connect(m_loadWidget, &LoadBase::serialConnected,
                 this, &MainWindow::onLoadSerialConnected);
         connect(m_loadWidget, &LoadBase::serialDisconnected,
@@ -40,11 +40,11 @@ MainWindow::MainWindow(const QString &driver, const QString &load, const QString
                 this, &MainWindow::updateLoadStatus);
     }
     
-    // 根据选择的照度计型号创建对应的对象
+    // Create illuminometer object based on the selected type
     if (meter == "CL-200A") {
         m_meterWidget = new CL200AWidget(this);
         
-        // 连接信号
+        // Connect singals
         connect(m_meterWidget, &MeterBase::serialConnected,
                 this, &MainWindow::onMeterSerialConnected);
         connect(m_meterWidget, &MeterBase::serialDisconnected,
@@ -55,6 +55,7 @@ MainWindow::MainWindow(const QString &driver, const QString &load, const QString
 
     initUI();
     initConnections();
+    initSerialPorts();
     setupStyles();
 }
 
@@ -66,32 +67,34 @@ MainWindow::~MainWindow()
 
 void MainWindow::initUI()
 {
-    // 创建中央部件
+    // Create a central component
     m_centralWidget = new QWidget(this);
     setCentralWidget(m_centralWidget);
     
-    // 创建主布局
+    // Create a central layout
     auto *mainLayout = new QVBoxLayout(m_centralWidget);
     auto *topLayout = new QHBoxLayout();
     auto *bottomLayout = new QHBoxLayout();
     
-    // 创建各个区域
-    createDriverArea();           // 左上角驱动控制区域
-    createConnectionArea();       // 左下角通讯连接状态管理
-    createLoadStatusArea();       // 电子负载状态区域
-    createSchemeArea();          // 软件设置方案区域
-    createChartArea();           // 右侧图表区域
+    // Create zones
+    createDriverArea();           // Upper left corner drive control area
+    createConnectionArea();       // Lower left corner communication connection status management
+    createLoadStatusArea();       // Electronic load status area
+    createIlluminometerArea();    // Illuminometer status area
+    createSchemeArea();          // Software Settings solution area
+    createChartArea();           // Right chart area
     
-    // 组装布局
+    // Assembly layout
     topLayout->addWidget(m_driverArea, 3);
     topLayout->addWidget(m_chartWidget, 2);
     
     bottomLayout->addWidget(m_connectionGroup, 3);
     bottomLayout->addWidget(m_loadStatusGroup, 2);
+    bottomLayout->addWidget(m_illuStatusGroup, 2);
     bottomLayout->addWidget(m_schemeGroup, 1);
     bottomLayout->addStretch(5);
     
-    // 返回按钮
+    // return btn
     m_backButton = new QPushButton("返回", this);
     m_backButton->setFixedSize(100, 35);
     bottomLayout->addWidget(m_backButton, 0, Qt::AlignRight);
@@ -100,54 +103,32 @@ void MainWindow::initUI()
     mainLayout->addLayout(bottomLayout, 1);
 }
 
-// 创建通讯连接状态管理区域
-/*
-通讯连接状态管理区域：
-显示三个设备的串口连接状态
-提供串口选择和连接/断开功能
-自动更新可用串口列表
-连接状态提示
-*/
 
+/*
+Create a communication connection status management area:
+The serial port connection status of the three devices is displayed
+The serial port can be selected, connected and disconnected
+Automatically updated the list of available serial ports
+Connect statue alert
+*/
 void MainWindow::createConnectionArea()
 {
     m_connectionGroup = new QGroupBox("通讯连接状态", this);
     auto *layout = new QHBoxLayout(m_connectionGroup);
-    layout->setSpacing(20); // 设置布局间距
+    layout->setSpacing(20); // set layout spacing
 
-    // 驱动连接状态
+    // Connection status of the driver
     auto *driverConnBox = new QGroupBox("驱动连接", this);
     auto *driverLayout = new QVBoxLayout(driverConnBox);
     auto *driverPortCombo = new QComboBox(this);
-    m_driverConnectBtn = new QPushButton("连接", this);  // 使用类成员变量
+    m_driverConnectBtn = new QPushButton("连接", this);
     m_driverConnectBtn->setObjectName("driverConnBtn");
-    
-//    // 设置初始样式
-//    m_driverConnectBtn->setStyleSheet(R"(
-//        QPushButton#driverConnBtn {
-//            background-color: #337ab7;
-//            color: white;
-//            border: none;
-//            padding: 5px 15px;
-//            border-radius: 3px;
-//        }
-//        QPushButton#driverConnBtn:hover {
-//            background-color: #286090;
-//        }
-//        QPushButton#driverConnBtn:disabled {
-//            background-color: #cccccc;
-//        }
-//        QPushButton#driverConnBtn:checked {
-//            background-color: #4CAF50;
-//        }
-//    )");
 
     driverLayout->addWidget(driverPortCombo);
     driverLayout->addWidget(m_driverConnectBtn);
 
-    // 连接按钮点击事件
     connect(m_driverConnectBtn, &QPushButton::clicked, this, [=]() {
-        // 检查是否已连接
+        // Check whether it is connected
         DriverChannelType channelType = parseDriverType(m_driverType);
         bool isConnected = false;
         
@@ -158,35 +139,24 @@ void MainWindow::createConnectionArea()
         }
         
         if (isConnected) {
-            // 已连接，执行断开操作
+            // Connected now, be disconnect
             if (channelType == DriverChannelType::CH8 && m_driverWidget) {
                 m_driverWidget->disconnectPort();
             } else if (m_driverGeneralWidget) {
                 m_driverGeneralWidget->disconnectPort();
             }
         } else {
-            // 未连接，执行连接操作
+            // Have not connected, perform the connection
             QString portName = driverPortCombo->currentText();
             if (portName.isEmpty()) {
                 QMessageBox::warning(this, "错误", "请选择驱动串口");
                 return;
             }
             
-            // 禁用按钮，防止重复点击
+            // Disable button to prevent repeated clicks
             m_driverConnectBtn->setEnabled(false);
             
-            // 设置连接超时定时器
-            QTimer::singleShot(5000, this, [this]() {
-                if (!m_driverConnectBtn->isEnabled()) {
-                    m_driverConnectBtn->setEnabled(true);
-                    m_driverConnectBtn->setChecked(false);
-                    m_driverConnectBtn->setText("连接");
-                    ToastMessage *toast = new ToastMessage("连接超时", this);
-                    toast->showToast(1000);
-                }
-            });
-            
-            // 尝试连接
+            // Try to connect
             if (channelType == DriverChannelType::CH8 && m_driverWidget) {
                 m_driverWidget->connectToPort(portName);
             } else if (m_driverGeneralWidget) {
@@ -195,7 +165,7 @@ void MainWindow::createConnectionArea()
         }
     });
 
-    // 电子负载连接状态
+    // Connection status of the electronic load
     auto *loadConnBox = new QGroupBox("电子负载连接", this);
     auto *loadLayout = new QVBoxLayout(loadConnBox);
     auto *loadPortCombo = new QComboBox(this);
@@ -205,21 +175,7 @@ void MainWindow::createConnectionArea()
     loadLayout->addWidget(loadPortCombo);
     loadLayout->addWidget(loadConnBtn);
 
-    // 照度计连接状态
-    auto *meterConnBox = new QGroupBox("照度计连接", this);
-    auto *meterLayout = new QVBoxLayout(meterConnBox);
-    auto *meterPortCombo = new QComboBox(this);
-    auto *meterConnBtn = new QPushButton("连接", this);
-    meterConnBtn->setObjectName("meterConnBtn");
-    meterConnBtn->setCheckable(true);
-    meterLayout->addWidget(meterPortCombo);
-    meterLayout->addWidget(meterConnBtn);
-
-    layout->addWidget(driverConnBox);
-    layout->addWidget(loadConnBox);
-    layout->addWidget(meterConnBox);
-
-    // 电子负载连接按钮处理
+    // The button click method for electronic load connect
     connect(loadConnBtn, &QPushButton::clicked, this, [=](bool checked) {
         if (checked) {
             // 只发送连接请求
@@ -234,6 +190,21 @@ void MainWindow::createConnectionArea()
         }
     });
 
+    // Connection status of the illuminometer
+    auto *meterConnBox = new QGroupBox("照度计连接", this);
+    auto *meterLayout = new QVBoxLayout(meterConnBox);
+    auto *meterPortCombo = new QComboBox(this);
+    auto *meterConnBtn = new QPushButton("连接", this);
+    meterConnBtn->setObjectName("meterConnBtn");
+    meterConnBtn->setCheckable(true);
+    meterLayout->addWidget(meterPortCombo);
+    meterLayout->addWidget(meterConnBtn);
+
+    layout->addWidget(driverConnBox);
+    layout->addWidget(loadConnBox);
+    layout->addWidget(meterConnBox);
+
+    // The button click method for illuminometer connect
     connect(meterConnBtn, &QPushButton::clicked, this, [=](bool checked) {
         if (checked) {
             if (m_meterWidget) {
@@ -421,6 +392,95 @@ void MainWindow::createLoadStatusArea()
         currentValue->setText(QString::number(current, 'f', 3) + " A");
         powerValue->setText(QString::number(power, 'f', 3) + " W");
     });
+}
+
+// 创建照度计状态区域
+
+void MainWindow::createIlluminometerArea()
+{
+    m_illuStatusGroup = new QGroupBox("照度计状态", this);
+    auto *layout = new QVBoxLayout(m_illuStatusGroup);
+    layout->setSpacing(15);
+
+    // 创建状态显示标签
+    auto *statusLayout = new QHBoxLayout();
+    auto *statusLabel = new QLabel("状态:", this);
+    m_meterStatusLabel = new QLabel("未连接", this);
+    m_meterStatusLabel->setStyleSheet("QLabel { color: red; }");
+    statusLayout->addWidget(statusLabel);
+    statusLayout->addWidget(m_meterStatusLabel);
+    layout->addLayout(statusLayout);
+
+    // 照度显示
+    auto *illuminanceLayout = new QHBoxLayout();
+    auto *illuminanceLabel = new QLabel("照度:", this);
+    m_illuminanceValue = new QLabel("0.0 lx", this);
+    m_illuminanceValue->setObjectName("illuminanceValue");
+    m_illuminanceValue->setStyleSheet("QLabel { font-size: 16px; font-weight: bold; color: #2c3e50; }");
+    illuminanceLayout->addWidget(illuminanceLabel);
+    illuminanceLayout->addWidget(m_illuminanceValue);
+    layout->addLayout(illuminanceLayout);
+
+    // 色温显示
+    auto *colorTempLayout = new QHBoxLayout();
+    auto *colorTempLabel = new QLabel("色温:", this);
+    m_colorTempValue = new QLabel("0 K", this);
+    m_colorTempValue->setObjectName("colorTempValue");
+    m_colorTempValue->setStyleSheet("QLabel { font-size: 16px; font-weight: bold; color: #2c3e50; }");
+    colorTempLayout->addWidget(colorTempLabel);
+    colorTempLayout->addWidget(m_colorTempValue);
+    layout->addLayout(colorTempLayout);
+
+    // 模式选择
+    auto *modelLabel = new QLabel("测量模式:", this);
+    auto *modelLayout = new QHBoxLayout();
+    m_meterButtonGroup = new QButtonGroup(this);
+    auto *colorTemperatureRadioBtn = new QRadioButton("色温", this);
+    auto *illuminanceRadioBtn = new QRadioButton("照度", this);
+    m_meterButtonGroup->addButton(colorTemperatureRadioBtn, 0); // 0 对应 01 命令
+    m_meterButtonGroup->addButton(illuminanceRadioBtn, 1); // 1 对应 02 命令
+    m_meterButtonGroup->setExclusive(true);
+    colorTemperatureRadioBtn->setChecked(true);
+
+
+    modelLayout->addWidget(colorTemperatureRadioBtn);
+    modelLayout->addWidget(illuminanceRadioBtn);
+    layout->addWidget(modelLabel);
+    layout->addLayout(modelLayout);
+
+    // 开始测量按钮
+    m_measureBtn = new QPushButton("开始测量", this);
+    connect(m_measureBtn, &QPushButton::clicked, this, [=]() {
+        if (m_measureBtn->text() == "开始测量") {
+            if (!m_meterWidget || !m_meterWidget->isConnected()) {
+                ToastMessage *toast = new ToastMessage("请先连接照度计", this);
+                toast->showToast(1000);
+                return;
+            }
+            
+            // 开始测量
+            int mode = m_meterButtonGroup->checkedId();
+            if (m_meterType == "CL-200A") {
+                if (auto *cl200a = qobject_cast<CL200AWidget*>(m_meterWidget)) {
+                    cl200a->setMeasurementType(mode);
+                    cl200a->startMeasurement();
+                    LOG_INFO("开始照度计测量，模式: " + QString::number(mode));
+                }
+            }
+            
+            m_measureBtn->setText("停止测量");
+        } else if (m_measureBtn->text() == "停止测量") {
+            // 停止测量
+            if (m_meterWidget) {
+                m_meterWidget->stopMeasurement();
+                LOG_INFO("停止照度计测量");
+            }
+            
+            m_measureBtn->setText("开始测量");
+        }
+    });
+
+    layout->addWidget(m_measureBtn);
 }
 
 // 创建软件设置方案区域
@@ -1076,6 +1136,12 @@ void MainWindow::onLoadSerialError(const QString &error)
 void MainWindow::onMeterSerialConnected(const QString &portName)
 {
     updateConnectionStatus();
+    
+    if (m_meterStatusLabel) {
+        m_meterStatusLabel->setText("已连接 " + portName);
+        m_meterStatusLabel->setStyleSheet("QLabel { color: green; }");
+    }
+    
     ToastMessage *toast = new ToastMessage("照度计已连接到 " + portName, this);
     toast->showToast(1000);
 }
@@ -1084,9 +1150,14 @@ void MainWindow::onMeterSerialDisconnected()
 {
     updateConnectionStatus();
     
-    if (auto *meterConnBtn = m_connectionGroup->findChild<QPushButton*>("meterConnBtn")) {
-        meterConnBtn->setChecked(false);
-        meterConnBtn->setText("连接");
+    if (m_meterStatusLabel) {
+        m_meterStatusLabel->setText("未连接");
+        m_meterStatusLabel->setStyleSheet("QLabel { color: red; }");
+    }
+    
+    // 如果正在测量，更新测量按钮状态
+    if (m_measureBtn && m_measureBtn->text() == "停止测量") {
+        m_measureBtn->setText("开始测量");
     }
     
     ToastMessage *toast = new ToastMessage("照度计已断开连接", this);
@@ -1095,7 +1166,16 @@ void MainWindow::onMeterSerialDisconnected()
 
 void MainWindow::onMeterDataUpdated(float illuminance, float colorTemp, float r, float g, float b)
 {
-    // 更新测量数据
+    // 更新界面显示
+    if (m_illuminanceValue) {
+        m_illuminanceValue->setText(QString::number(illuminance, 'f', 1) + " lx");
+    }
+    
+//    if (m_colorTempValue) {
+//        m_colorTempValue->setText(QString::number(colorTemp, 'f', 0) + " K");
+//    }
+    
+    // 创建测量数据
     MeasurementData measurementData;
     measurementData.timestamp = QDateTime::currentDateTime();
     measurementData.illuminance = illuminance;
@@ -1109,16 +1189,24 @@ void MainWindow::onMeterDataUpdated(float illuminance, float colorTemp, float r,
         measurementData.voltage = m_lastVoltage;
         measurementData.current = m_lastCurrent;
         measurementData.power = m_lastPower;
-        measurementData.resistance = m_lastVoltage / m_lastCurrent;
+        measurementData.resistance = m_lastVoltage / (m_lastCurrent > 0.001 ? m_lastCurrent : 0.001);
     }
 
     // 确保图表更新
-    if(m_chartWidget) {
+    if (m_chartWidget) {
         m_chartWidget->updateChartData(measurementData);
     }
 
-    // 也可以添加到数据管理器
+    // 添加到数据管理器
     DataManager::instance()->addMeasurement(measurementData);
+    
+    // 记录数据到本地日志
+    LOG_INFO(QString("测量数据 - 照度: %1 lx, 色温: %2 K, RGB: (%3, %4, %5)")
+             .arg(illuminance, 0, 'f', 1)
+             .arg(colorTemp, 0, 'f', 0)
+             .arg(r, 0, 'f', 1)
+             .arg(g, 0, 'f', 1)
+             .arg(b, 0, 'f', 1));
 }
 
 void MainWindow::onDriverSerialConnected(const QString &portName)
@@ -1157,7 +1245,6 @@ void MainWindow::onDriverSerialError(const QString &error)
     m_driverConnectBtn->setEnabled(true);
     m_driverConnectBtn->setChecked(false);
     m_driverConnectBtn->setText("连接");
-    
     LOG_ERROR("驱动串口错误: " + error);
     ToastMessage *toast = new ToastMessage("驱动错误: " + error, this);
     toast->showToast(1000);
